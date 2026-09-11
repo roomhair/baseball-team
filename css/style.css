@@ -1,0 +1,271 @@
+/* ==================================================
+   最強チームメーカー  共通スタイル
+   スマートフォン優先（モバイルファースト）で書いています。
+   ================================================== */
+
+/* --- 1. 色や余白の設定をここにまとめる ------------------
+   「変数」としてまとめておくと、あとから色を変えたいときに
+   この部分だけ直せば全体に反映されます。
+--------------------------------------------------------- */
+:root {
+  --c-bg:        #070d1c;   /* 背景（ナイター球場の夜空） */
+  --c-bg-2:      #0f1b38;   /* 背景のグラデーション先 */
+  --c-panel:     #14203d;   /* カードやパネルの背景 */
+  --c-panel-2:   #1b2c52;   /* 少し明るいパネル */
+  --c-line:      #2c3f6b;   /* 枠線 */
+  --c-text:      #eaf0ff;   /* 基本の文字色 */
+  --c-text-dim:  #96a6c8;   /* 補足の文字色 */
+  --c-accent:    #ffd23f;   /* アクセント（ゴールド） */
+  --c-accent-2:  #35e0d0;   /* アクセント（シアン） */
+  --c-danger:    #ff5c72;   /* 「見送る」など */
+  --c-ok:        #3ddc84;   /* 「取る」など */
+
+  --radius:      16px;      /* 角の丸み */
+  --gap:         16px;      /* 標準の余白 */
+  --maxw:        520px;     /* 中身の最大幅（スマホ基準） */
+
+  color-scheme: dark;
+}
+
+/* --- 2. 全体のリセット --------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(53, 224, 208, .12), transparent 60%),
+    linear-gradient(180deg, var(--c-bg) 0%, var(--c-bg-2) 100%);
+  background-attachment: fixed;
+  color: var(--c-text);
+  font-family:
+    "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
+    "Yu Gothic", Meiryo, system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- 3. 画面の切り替え ---------------------------------
+   .screen は普段は非表示。
+   .is-active が付いた画面だけが表示されます。
+   JavaScript でこのクラスを付け外しします。
+--------------------------------------------------------- */
+.screen {
+  display: none;
+}
+
+.screen.is-active {
+  display: block;
+  animation: fade-in .35s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- 4. 中身の共通枠 ----------------------------------- */
+.container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
+}
+
+/* --- 5. トップ画面のタイトル --------------------------- */
+.hero {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.hero__eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: .28em;
+  color: var(--c-accent-2);
+  font-weight: 700;
+}
+
+.hero__title {
+  margin: 0;
+  font-size: clamp(34px, 11vw, 52px);
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: .02em;
+  text-shadow: 0 0 28px rgba(255, 210, 63, .28);
+}
+
+.hero__title-main {
+  color: var(--c-accent);
+}
+
+.hero__title-sub {
+  color: var(--c-text);
+}
+
+.hero__lead {
+  margin: 18px auto 0;
+  font-size: 15px;
+  color: var(--c-text-dim);
+  font-weight: 600;
+}
+
+/* --- 6. ルール説明 ------------------------------------- */
+.rules {
+  margin-top: 28px;
+  background: linear-gradient(180deg, var(--c-panel) 0%, rgba(20, 32, 61, .6) 100%);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  padding: 18px 18px 16px;
+}
+
+.rules__heading {
+  margin: 0 0 12px;
+  font-size: 13px;
+  letter-spacing: .2em;
+  color: var(--c-accent-2);
+  font-weight: 800;
+}
+
+.rules__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.rules__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--c-text);
+}
+
+.rules__list b {
+  color: var(--c-accent);
+}
+
+.rules__num {
+  flex: 0 0 22px;
+  height: 22px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-line);
+  color: var(--c-text-dim);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+
+.rules__note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--c-text-dim);
+}
+
+/* --- 7. ボタン ----------------------------------------
+   ボタンはこのゲームの主役なので、指で押しやすい大きさに。
+--------------------------------------------------------- */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: scale(.97);
+}
+
+.btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #ffd23f 0%, #ff9d2f 100%);
+  color: #1a1205;
+  box-shadow: 0 8px 24px rgba(255, 160, 47, .32);
+}
+
+.btn--xl {
+  padding: 20px;
+  font-size: 20px;
+}
+
+.cta {
+  margin-top: 28px;
+}
+
+/* --- 8. 広告枠 ----------------------------------------
+   初期版では中身が空なので、何も表示されません。
+   広告タグを入れると自動的に高さが出ます。
+--------------------------------------------------------- */
+.ad-slot:empty {
+  display: none;
+}
+
+.ad-slot {
+  margin: 16px 0;
+  text-align: center;
+}
+
+/* --- 9. フッター --------------------------------------- */
+.footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--c-text-dim);
+}
+
+.footer p {
+  margin: 4px 0;
+}
+
+.footer__small {
+  font-size: 11px;
+  opacity: .75;
+}
+
+/* --- 10. 未実装画面の仮表示（STEPが進むと消えます） ----- */
+.placeholder {
+  margin-top: 60px;
+  padding: 40px 20px;
+  border: 1px dashed var(--c-line);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--c-text-dim);
+  font-size: 14px;
+}
+
+/* --- 11. PCで見たときの微調整 --------------------------- */
+@media (min-width: 640px) {
+  .container {
+    padding-top: 48px;
+  }
+  .hero__lead {
+    font-size: 16px;
+  }
+}

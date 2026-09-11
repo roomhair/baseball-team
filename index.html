@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>最強チームメーカー</title>
+  <meta name="description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！">
+
+  <!-- SNSでリンクを貼ったときの見え方（STEP10で画像も設定します） -->
+  <meta property="og:title" content="最強チームメーカー">
+  <meta property="og:description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==================================================
+       アプリ全体の入れ物
+       画面（screen）を切り替えて使います。
+       is-active が付いている画面だけが表示されます。
+       ================================================== -->
+  <div id="app">
+
+    <!-- ========== ① トップ画面 ========== -->
+    <section class="screen is-active" id="screen-top">
+      <div class="container">
+
+        <!-- 広告枠（初期版は空。STEP10で有効化できます） -->
+        <div class="ad-slot" data-ad-slot="top-header"></div>
+
+        <header class="hero">
+          <p class="hero__eyebrow">BASEBALL TEAM BUILDER</p>
+          <h1 class="hero__title">
+            <span class="hero__title-main">最強チーム</span><span class="hero__title-sub">メーカー</span>
+          </h1>
+          <p class="hero__lead">
+            ランダムに現れる選手を取捨選択して、<br>最強の9人を作れ！
+          </p>
+        </header>
+
+        <div class="rules">
+          <h2 class="rules__heading">ルール</h2>
+          <ul class="rules__list">
+            <li><span class="rules__num">1</span>選手はポジション関係なく<b>完全ランダム</b>で登場</li>
+            <li><span class="rules__num">2</span>できるのは「<b>取る</b>」か「<b>見送る</b>」だけ</li>
+            <li><span class="rules__num">3</span>見送れるのは<b>5回まで</b></li>
+            <li><span class="rules__num">4</span><b>9人</b>集めたら打順と守備位置を決める</li>
+          </ul>
+          <p class="rules__note">※ 捕手が来ない。投手が5人になる。ショートがいない。それがこのゲームです。</p>
+        </div>
+
+        <!-- 広告枠（ゲーム開始前） -->
+        <div class="ad-slot" data-ad-slot="top-before-start"></div>
+
+        <div class="cta">
+          <button type="button" class="btn btn--primary btn--xl" id="btn-start">
+            ゲーム開始
+          </button>
+        </div>
+
+        <footer class="footer">
+          <p>最強チームメーカー</p>
+          <p class="footer__small">登場する選手・球団はすべて架空のものです。</p>
+        </footer>
+
+      </div>
+    </section>
+
+    <!-- ========== ② ガチャ画面（STEP 2・3で作ります） ========== -->
+    <section class="screen" id="screen-game">
+      <div class="container">
+        <p class="placeholder">ここにゲーム画面を作ります（STEP 2 以降）</p>
+      </div>
+    </section>
+
+    <!-- ========== ③ 編成画面（STEP 5で作ります） ========== -->
+    <section class="screen" id="screen-lineup">
+      <div class="container">
+        <p class="placeholder">ここに打順・守備位置の設定画面を作ります（STEP 5）</p>
+      </div>
+    </section>
+
+    <!-- ========== ④ 結果画面（STEP 7で作ります） ========== -->
+    <section class="screen" id="screen-result">
+      <div class="container">
+        <p class="placeholder">ここにチーム評価の結果画面を作ります（STEP 7）</p>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
