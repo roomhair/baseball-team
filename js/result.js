@@ -6,26 +6,40 @@
 
 const Result = {
 
-  lineup: null,   // [{ player, pos }] 打順順
+  team: null,     // Lineup.build() が作った編成
   ev: null,       // 評価結果
   viewOnly: false, // 他人の結果を見ているだけのとき true
 
   /** 編成データから結果を表示する */
-  show: function (lineup, options) {
+  show: function (team, options) {
     const opt = options || {};
-    this.lineup = lineup;
+    this.team = team;
     this.viewOnly = !!opt.viewOnly;
-    this.ev = Evaluate.run(lineup);
+    this.ev = Evaluate.run(team);
     this.render();
   },
 
-  /** slots（{playerId,pos}の配列）から表示する */
-  showFromSlots: function (slots, options) {
-    const lineup = slots.map(function (s) {
+  /** 保存形式（{pitcherId, slots, useDH}）から表示する */
+  showFromSaved: function (saved, options) {
+    if (!saved || !Array.isArray(saved.slots)) return false;
+
+    const order = saved.slots.map(function (s) {
       return { player: PlayerPool.get(s.playerId), pos: s.pos };
     });
-    if (lineup.some(function (l) { return !l.player; })) return false;
-    this.show(lineup, options);
+    if (order.some(function (o) { return !o.player; })) return false;
+
+    const pitcher = PlayerPool.get(saved.pitcherId);
+    if (!pitcher) return false;
+
+    const defense = order.filter(function (o) { return o.pos !== DH_KEY; });
+    const useDH = saved.useDH !== false;
+    if (useDH) defense.unshift({ player: pitcher, pos: '投' });
+
+    this.show({
+      order: order, defense: defense, pitcher: pitcher,
+      bench: saved.benchId ? PlayerPool.get(saved.benchId) : null,
+      useDH: useDH,
+    }, options);
     return true;
   },
 
@@ -44,7 +58,7 @@ const Result = {
         '</div>';
     };
 
-    const rows = this.lineup.map(function (slot, i) {
+    const rows = this.team.order.map(function (slot, i) {
       const p = slot.player;
       const grade = ev.fits[i];
       return '' +
@@ -74,6 +88,14 @@ const Result = {
 
       '<div class="defense-note">' + esc(ev.defenseComment) + '</div>' +
 
+      (this.team.useDH ? '' +
+        '<div class="fixed-slot fixed-slot--result">' +
+          '<span class="row__pos" data-pos="投">投</span>' +
+          '<span class="row__name">' + esc(this.team.pitcher.name) +
+            '<small>' + esc(this.team.pitcher.team) + ' ' + this.team.pitcher.year +
+            '・先発投手</small></span>' +
+        '</div>' : '') +
+
       '<ol class="rows">' + rows + '</ol>';
 
     // ボタンの表示切り替え
@@ -85,7 +107,7 @@ const Result = {
      結果画像
      ================================================== */
   makeImage: function () {
-    const canvas = ResultImage.draw(this.lineup, this.ev);
+    const canvas = ResultImage.draw(this.team, this.ev);
     const overlay = document.getElementById('image-overlay');
     const box = document.getElementById('image-box');
 
@@ -110,10 +132,13 @@ const Result = {
   },
 
   shareUrl: function () {
-    const slots = this.lineup.map(function (l) {
-      return { playerId: l.player.id, pos: l.pos };
+    return ShareCode.url({
+      slots: this.team.order.map(function (l) {
+        return { playerId: l.player.id, pos: l.pos };
+      }),
+      pitcherId: this.team.pitcher.id,
+      useDH: this.team.useDH,
     });
-    return ShareCode.url(slots);
   },
 
   /** 結果URLをコピーする */

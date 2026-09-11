@@ -41,24 +41,27 @@ const Evaluate = {
 
   /**
    * 評価の本体。
-   * @param {Array} lineup 打順順に並んだ9人。各要素は { player, pos }
+   * @param {Object} team Lineup.build() が作る形
+   *   { order: 打順9人 [{player,pos}], defense: 守備9人 [{player,pos}],
+   *     pitcher: 投手, useDH: DH制かどうか }
    * @returns {Object} 評価結果
    */
-  run: function (lineup) {
+  run: function (team) {
+    const lineup = team.order;
     const fits = lineup.map(function (slot) {
       return fitOf(slot.player, slot.pos);
     });
 
     const batting  = this.batting(lineup);
-    const pitching = this.pitching(lineup, fits);
-    const fielding = this.fielding(lineup, fits);
+    const pitching = this.pitching(team.pitcher);
+    const fielding = this.fielding(team.defense);
 
     const w = this.WEIGHTS.total;
     const total = clampScore(Math.round(
       batting * w.batting + pitching * w.pitching + fielding * w.fielding
     ));
 
-    const facts = this.facts(lineup, fits);
+    const facts = this.facts(team, fits);
     const verdict = this.verdict(total, facts);
 
     return {
@@ -109,14 +112,11 @@ const Evaluate = {
      投手力
      投手の枠に誰を置いたかで、ほぼすべてが決まる。
      ================================================== */
-  pitching: function (lineup, fits) {
-    const slot = lineup.find(function (s) { return s.pos === '投'; });
-    if (!slot) return 0;
-
-    const p = slot.player;
+  pitching: function (p) {
+    if (!p) return 0;
 
     // 野手がマウンドに立っている場合
-    if (p.kind !== 'pitcher') return 0;
+    if (p.kind !== 'pitcher' && p.kind !== 'twoway') return 0;
 
     let score = p.r.pitch;
 
@@ -132,13 +132,13 @@ const Evaluate = {
      「その選手の守備力 × 適性の係数」を、
      守備位置の重要度で加重平均する。
      ================================================== */
-  fielding: function (lineup, fits) {
+  fielding: function (defense) {
     const defW = this.WEIGHTS.defense;
     let sum = 0, wsum = 0;
 
-    lineup.forEach(function (slot, i) {
+    defense.forEach(function (slot) {
       const w = defW[slot.pos] || 1;
-      const factor = FIT_FACTOR[fits[i]] || FIT_FACTOR['-'];
+      const factor = FIT_FACTOR[fitOf(slot.player, slot.pos)] || FIT_FACTOR['-'];
       sum += slot.player.r.field * factor * w;
       wsum += w;
     });
@@ -156,27 +156,30 @@ const Evaluate = {
   /* ==================================================
      チームの「事実」を数える（コメントを出し分けるため）
      ================================================== */
-  facts: function (lineup, fits) {
+  facts: function (team, fits) {
+    const lineup = team.order;
     const count = { A: 0, B: 0, C: 0, '-': 0 };
     fits.forEach(function (f) { count[f]++; });
 
-    const pitchers = lineup.filter(function (s) { return s.player.kind === 'pitcher'; });
-    const mound = lineup.find(function (s) { return s.pos === '投'; });
-
-    const at = {};
-    lineup.forEach(function (s, i) {
-      at[s.pos] = { player: s.player, fit: fits[i] };
+    const pitchers = lineup.filter(function (s) {
+      return s.player.kind === 'pitcher' && s.pos !== '投';
     });
 
+    const at = {};
+    team.defense.forEach(function (s) {
+      at[s.pos] = { player: s.player, fit: fitOf(s.player, s.pos) };
+    });
+
+    const mound = team.pitcher;
     return {
       fitCount: count,
-      perfect: count.A === 9,
+      perfect: count['-'] === 0 && count.C === 0 && count.B === 0,
       misfit: count['-'],
       rough: count['-'] + count.C,
-      pitcherCount: pitchers.length,
+      pitcherCount: pitchers.length + 1,
       // 投手なのに野手の位置を守らされている人数
-      pitcherOutOfPlace: pitchers.filter(function (s) { return s.pos !== '投'; }).length,
-      hasRealPitcher: !!(mound && mound.player.kind === 'pitcher'),
+      pitcherOutOfPlace: pitchers.length,
+      hasRealPitcher: !!(mound && (mound.kind === 'pitcher' || mound.kind === 'twoway')),
       catcherIsReal: !!(at['捕'] && at['捕'].fit === 'A'),
       avgOverall: Math.round(avg(lineup.map(function (s) { return s.player.ovr; }))),
       at: at,

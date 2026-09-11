@@ -5,10 +5,13 @@
 'use strict';
 
 const SCREENS = {
-  TOP:    'screen-top',
-  GAME:   'screen-game',
-  LINEUP: 'screen-lineup',
-  RESULT: 'screen-result',
+  TOP:          'screen-top',
+  GAME:         'screen-game',
+  ROSTER:       'screen-roster',
+  LINEUP:       'screen-lineup',
+  SEASON_SETUP: 'screen-season-setup',
+  SEASON:       'screen-season',
+  RESULT:       'screen-result',
 };
 
 /** 画面を切り替える */
@@ -42,7 +45,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // --- 2. 各画面の準備 ---
   Game.init();
+  Roster.init();
   Lineup.init();
+  SeasonSetup.init();
+  SeasonResult.init();
   Ads.init();
   renderMeta();
 
@@ -71,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
     startNewGame();
   });
   document.getElementById('btn-back-lineup').addEventListener('click', function () {
+    Lineup.onDone = null;
     showScreen(SCREENS.LINEUP);
   });
 
@@ -99,27 +106,43 @@ function startNewGame() {
 /** 保存データから続きを再開する */
 function resume(saved) {
   try {
+    Game.state = saved;
+
+    // --- シーズンまで進んでいた場合 ---
+    if (saved.phase === 'season' && saved.season) {
+      const restored = SeasonRun.restore(saved.season);
+      if (restored) {
+        SeasonResult.show(restored);
+        showScreen(SCREENS.SEASON);
+        return;
+      }
+    }
+
+    // --- チーム評価まで進んでいた場合 ---
     if (saved.phase === 'result' && saved.lineup) {
       Lineup.resume(saved.lineup);
-      if (Result.showFromSlots(saved.lineup)) {
-        Game.state = saved;
+      if (Result.showFromSaved(saved.lineup)) {
         showScreen(SCREENS.RESULT);
         return;
       }
     }
+
+    // --- 打順を決めている途中 ---
     if (saved.phase === 'lineup' && saved.lineup) {
-      Game.state = saved;
       Lineup.resume(saved.lineup);
       showScreen(SCREENS.LINEUP);
       return;
     }
-    if (saved.phase === 'lineup') {
-      Game.state = saved;
-      Lineup.start(Game.pickedPlayers());
-      showScreen(SCREENS.LINEUP);
+
+    // --- シーズンの準備中、またはメンバー確認画面 ---
+    if (saved.phase === 'season-setup' || saved.phase === 'roster' ||
+        saved.picked.length >= CONFIG.TEAM_SIZE) {
+      Roster.show();
+      showScreen(SCREENS.ROSTER);
       return;
     }
-    // 途中まで集めていた場合
+
+    // --- 途中まで集めていた場合 ---
     Game.resume(saved);
     showScreen(SCREENS.GAME);
   } catch (e) {

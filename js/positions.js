@@ -19,8 +19,21 @@ const POS_LIST = [
 
 const POS_KEYS = POS_LIST.map(function (p) { return p.key; });
 
+/* --- 指名打者（DH） ---
+   守備には就かないので POS_LIST とは分けてある。
+   DH制を使うリーグでは、野手9人のうち1人がここに入る。 */
+const DH_KEY = 'Ｄ';
+const DH_NAME = '指名打者';
+
+/** 打順を組むときに選べる場所（守備8つ＋DH）。DH制ありのとき使う。 */
+const DH_LINEUP_KEYS = ['捕', '一', '二', '三', '遊', '左', '中', '右', DH_KEY];
+
+/** 打順を組むときに選べる場所（守備9つ）。DH制なし（セ・リーグ）のとき使う。 */
+const NODH_LINEUP_KEYS = POS_KEYS.slice();
+
 /** '遊' → '遊撃手' */
 function posName(key) {
+  if (key === DH_KEY) return DH_NAME;
   const found = POS_LIST.find(function (p) { return p.key === key; });
   return found ? found.name : key;
 }
@@ -64,6 +77,12 @@ const FIT_LABEL = { 'A': '適性A', 'B': '適性B', 'C': '適性C', '-': '適性
  */
 function fitOf(player, posKey) {
   if (!player) return '-';
+
+  // DHは守備に就かないので、野手なら誰でもA。投手だけは適性外。
+  if (posKey === DH_KEY) return player.pos === '投' ? '-' : 'A';
+
+  // 二刀流選手は、投手としても本職として扱う
+  if (player.kind === 'twoway' && posKey === '投') return 'A';
 
   // data/positions.tsv に副ポジションが書かれていれば、そこはBとして扱う
   if (player.sub && player.sub.indexOf(posKey) !== -1) {

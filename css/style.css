@@ -27,6 +27,10 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 
+/* hidden を付けた要素は必ず隠す。
+   ボタンなどに display を指定していると、それに負けてしまうため。 */
+[hidden] { display: none !important; }
+
 body {
   min-height: 100dvh;
   /* 上のほうだけ光らせて、下に向かって色が変わる背景。
@@ -412,3 +416,199 @@ a { color: var(--c-accent-2); }
   .container--game { padding-top: 104px; }
   .hero__lead { font-size: 16px; }
 }
+
+
+/* ==================================================
+   ここから、10人制・シーズン対応で追加した見た目
+   ================================================== */
+
+/* --- 獲得画面：残り枠の表示 --- */
+.gamebar__need {
+  display: inline-block; margin-left: 8px; font-size: 11px;
+  color: var(--c-text-dim); font-weight: 700; vertical-align: 3px;
+}
+
+/* --- 二刀流のときは3つのボタンになる --- */
+.choice--twoway { grid-template-columns: 1fr 1fr; }
+.choice--twoway .btn { font-size: 17px; padding: 16px 8px; }
+.choice--twoway .btn--pass { grid-column: 1 / -1; font-size: 18px; }
+
+.btn--take2 {
+  background: linear-gradient(135deg, #6ec7ff, #2f7fd6);
+  color: #03192b; box-shadow: 0 8px 22px rgba(78, 165, 232, .26);
+}
+
+/* --- 二刀流カード --- */
+.card--twoway { border-color: rgba(255, 210, 63, .55); }
+.card__split {
+  margin: 12px 0 6px; font-size: 11px; font-weight: 800;
+  letter-spacing: .12em; color: var(--c-accent-2);
+}
+.tag-tw, .tag-own {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px;
+  font-size: 10px; font-style: normal; font-weight: 800; vertical-align: 1px;
+}
+.tag-tw  { background: rgba(255,210,63,.2); color: #ffd96b; }
+.tag-own { background: rgba(53,224,208,.18); color: #7ceee2; }
+
+/* --- 一覧の総合値 --- */
+.row__ovr { font-size: 15px; font-weight: 900; color: var(--c-accent); }
+
+/* 打順の番号が無い一覧（メンバー確認画面など） */
+.rows--plain .row { grid-template-columns: 28px 1fr auto; }
+
+/* --- セクション --- */
+.section { margin-top: 30px; }
+.section__title {
+  margin: 0 0 8px; font-size: 13px; letter-spacing: .16em;
+  color: var(--c-accent-2); font-weight: 800;
+}
+.section__lead { margin: 0 0 12px; font-size: 12.5px; color: var(--c-text-dim); line-height: 1.7; }
+.ok-note {
+  margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 700;
+  background: rgba(61,220,132,.12); border: 1px solid rgba(61,220,132,.4); color: #8df0b6;
+}
+.next-note { margin: 20px 0 0; text-align: center; font-size: 13.5px; color: var(--c-text-dim); }
+
+/* --- 残りの候補選手（おまけ） --- */
+.rest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; opacity: .78; }
+.rest-item {
+  display: grid; grid-template-columns: 52px 28px 1fr auto; gap: 9px; align-items: center;
+  background: rgba(255,255,255,.04); border: 1px dashed var(--c-line);
+  border-radius: 12px; padding: 8px 12px;
+}
+.rest-item__no { font-size: 11px; color: var(--c-text-dim); font-weight: 700; }
+
+/* --- 打順画面の固定行 --- */
+.fixed-slot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 12px; padding: 10px 12px;
+  background: rgba(255,122,89,.10); border: 1px solid rgba(255,122,89,.4);
+  border-radius: 12px;
+}
+.fixed-slot--bench { background: rgba(255,255,255,.05); border-color: var(--c-line); }
+.fixed-slot--result { margin: 18px 0 6px; }
+.fixed-slot__label { font-size: 11px; color: var(--c-text-dim); font-weight: 800; }
+.fixed-slot__note { flex: 1 1 100%; font-size: 11px; color: var(--c-text-dim); }
+.fixed-slot select {
+  flex: 1 1 auto; min-width: 0; background: var(--c-panel-2); color: var(--c-text);
+  border: 1px solid var(--c-line); border-radius: 9px; padding: 8px;
+  font-family: inherit; font-size: 13.5px; font-weight: 700;
+}
+.slot__fixed {
+  flex: 1 1 auto; padding: 8px; border-radius: 9px; font-size: 13.5px; font-weight: 800;
+  background: rgba(255,122,89,.14); border: 1px solid rgba(255,122,89,.4); color: #ffb09a;
+}
+
+/* --- 入力まわり --- */
+.textinput {
+  width: 100%; padding: 12px 14px; border-radius: 12px;
+  background: var(--c-panel); border: 1px solid var(--c-line); color: var(--c-text);
+  font-family: inherit; font-size: 16px; font-weight: 700;
+}
+.radios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.radio {
+  display: block; position: relative; cursor: pointer;
+}
+.radio input { position: absolute; opacity: 0; pointer-events: none; }
+.radio span {
+  display: block; padding: 14px 10px; text-align: center; border-radius: 12px;
+  background: var(--c-panel); border: 1px solid var(--c-line);
+  font-size: 15px; font-weight: 800;
+}
+.radio input:checked + span {
+  background: rgba(255,210,63,.16); border-color: var(--c-accent); color: var(--c-accent);
+}
+
+/* --- 投手の補充 --- */
+.picks { display: grid; gap: 6px; }
+.pick {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center;
+  padding: 9px 12px; border-radius: 12px; cursor: pointer;
+  background: var(--c-panel); border: 1px solid var(--c-line);
+}
+.pick.is-on { border-color: var(--c-accent-2); background: rgba(53,224,208,.10); }
+.pick input { width: 18px; height: 18px; accent-color: #35e0d0; }
+.pick__body b { display: block; font-size: 14.5px; font-weight: 800; }
+.pick__body small { display: block; font-size: 10.5px; color: var(--c-text-dim); }
+.pick__ovr { font-size: 15px; font-weight: 900; color: var(--c-accent); }
+
+/* --- 投手の役割 --- */
+.roles { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rolerow {
+  display: grid; grid-template-columns: 1fr 128px; gap: 10px; align-items: center;
+  background: var(--c-panel); border: 1px solid var(--c-line);
+  border-radius: 12px; padding: 9px 12px;
+}
+.rolerow__name { font-size: 14.5px; font-weight: 800; line-height: 1.3; }
+.rolerow__name small { display: block; font-size: 10.5px; color: var(--c-text-dim); font-weight: 600; }
+.rolerow select {
+  background: var(--c-panel-2); color: var(--c-text); border: 1px solid var(--c-line);
+  border-radius: 9px; padding: 8px; font-family: inherit; font-size: 13px; font-weight: 700;
+}
+
+/* --- シーズン結果のタブ --- */
+.tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  margin-bottom: 16px; padding: 5px;
+  background: rgba(255,255,255,.05); border-radius: 14px;
+}
+.tabs button {
+  padding: 11px 4px; border: none; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--c-text-dim);
+  font-family: inherit; font-size: 13.5px; font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+}
+.tabs button.is-on { background: var(--c-accent); color: #1a1205; }
+
+/* --- 成績の表 --- */
+.tablewrap {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--c-line); border-radius: 14px;
+}
+.stat-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+.stat-table th, .stat-table td { padding: 8px 9px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.stat-table thead th {
+  position: sticky; top: 0; background: var(--c-panel-2);
+  font-size: 10.5px; color: var(--c-text-dim); font-weight: 800; letter-spacing: .04em;
+}
+.stat-table tbody tr:last-child td { border-bottom: none; }
+.stat-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.stat-table .strong { font-weight: 900; color: var(--c-accent); }
+.stat-table .nm { font-weight: 800; white-space: nowrap; }
+.stat-table .nm small { display: block; font-size: 10px; color: var(--c-text-dim); font-weight: 600; }
+.stat-table tr.is-me { background: rgba(255,210,63,.10); }
+.stat-table tr.is-me .nm { color: var(--c-accent); }
+.table-note { margin: 10px 2px 0; font-size: 11px; line-height: 1.7; color: var(--c-text-dim); }
+.rank-lead { margin: 0 0 12px; text-align: center; font-size: 16px; font-weight: 700; }
+.rank-lead b { font-size: 26px; font-weight: 900; color: var(--c-accent); }
+
+/* --- ポストシーズン --- */
+.series { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.series li {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--c-panel); border: 1px solid var(--c-line);
+  border-radius: 12px; padding: 10px 13px; font-size: 13.5px; font-weight: 700;
+}
+.series__label {
+  font-size: 10px; letter-spacing: .1em; color: #0b1226;
+  background: var(--c-accent-2); border-radius: 5px; padding: 2px 7px; font-weight: 800;
+}
+.series b { margin-left: auto; color: var(--c-accent); }
+
+/* --- 最終結果 --- */
+.final {
+  margin-top: 24px; padding: 26px 18px; text-align: center;
+  background: linear-gradient(180deg, var(--c-panel) 0%, #101a33 100%);
+  border: 1px solid var(--c-line); border-radius: 20px;
+}
+.final--gold {
+  background: linear-gradient(180deg, rgba(255,210,63,.18) 0%, rgba(120,80,0,.22) 100%);
+  border-color: rgba(255,210,63,.6);
+  box-shadow: 0 0 50px rgba(255,210,63,.18);
+}
+.final__icon { margin: 0; font-size: 46px; line-height: 1; }
+.final__label { margin: 10px 0 0; font-size: clamp(24px, 7vw, 34px); font-weight: 900; }
+.final--gold .final__label { color: var(--c-accent); text-shadow: 0 0 24px rgba(255,210,63,.5); }
+.final__record { margin: 12px 0 0; font-size: 14px; color: var(--c-text-dim); }
+.final__record b { font-size: 20px; color: var(--c-text); }

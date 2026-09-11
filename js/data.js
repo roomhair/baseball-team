@@ -7,8 +7,9 @@
 const PlayerPool = {
 
   all: [],          // 全選手
-  byPos: {},        // ポジションごとの選手一覧
+  byPos: {},        // ポジションごとの選手一覧（投手は '投' に入る）
   byId: {},         // ID から引く用
+  twoWay: [],       // 二刀流選手だけの一覧
   meta: {},         // 出典・年度などの情報
 
   /** 起動時に1回だけ呼ぶ */
@@ -32,7 +33,12 @@ const PlayerPool = {
 
     this.all.forEach(function (p) {
       self.byId[p.id] = p;
-      if (self.byPos[p.pos]) self.byPos[p.pos].push(p);
+      if (p.kind === 'twoway') {
+        // 二刀流は投手としても野手としても取れるので、別枠で持つ
+        self.twoWay.push(p);
+      } else if (self.byPos[p.pos]) {
+        self.byPos[p.pos].push(p);
+      }
     });
 
     return this;
@@ -52,22 +58,40 @@ const PlayerPool = {
    *   2. そのポジションの中から等確率で1人選ぶ
    * という2段階にしている。出やすさを変えたいときは config.js を直す。
    *
+   * さらに、まだ空いている枠に入れる選手しか出さない。
+   *   ・投手枠が埋まっていたら、投手は出てこない
+   *   ・野手枠が埋まっていたら（＝残り1枠が投手）、野手は出てこない
+   * これで「最後の1人が野手で投手が0人」という詰みが起きなくなる。
+   *
    * @param {string[]} usedNames すでに獲得した選手の名前（重複を避けるため）
+   * @param {Object}   need      あと何人必要か { pitcher: 数, fielder: 数 }
    */
-  draw: function (usedNames) {
+  draw: function (usedNames, need) {
     const used = usedNames || [];
-
-    // 1. ポジションを重み付きで決める
-    //    （その位置に選手が1人もいない場合は候補から外す）
-    const candidates = [];
-    let total = 0;
+    const want = need || { pitcher: 1, fielder: 1 };
     const self = this;
 
+    const isUsed = function (p) {
+      return CONFIG.NO_DUPLICATE_NAME && used.indexOf(p.name) !== -1;
+    };
+
+    // --- 二刀流を出すかどうか ---
+    // 二刀流は人数が少ないので、重みではなく「出す確率」で扱う。
+    const twoWayPool = this.twoWay.filter(function (p) { return !isUsed(p); });
+    if (twoWayPool.length > 0 && Math.random() < CONFIG.TWOWAY_RATE) {
+      return twoWayPool[Math.floor(Math.random() * twoWayPool.length)];
+    }
+
+    // --- 通常の選手 ---
+    const candidates = [];
+    let total = 0;
+
     POS_KEYS.forEach(function (key) {
-      const list = self.byPos[key] || [];
-      const pickable = list.filter(function (p) {
-        return !(CONFIG.NO_DUPLICATE_NAME && used.indexOf(p.name) !== -1);
-      });
+      // 空いている枠に入れない種類は、そもそも出さない
+      if (key === '投' && want.pitcher <= 0) return;
+      if (key !== '投' && want.fielder <= 0) return;
+
+      const pickable = (self.byPos[key] || []).filter(function (p) { return !isUsed(p); });
       if (pickable.length === 0) return;
 
       const weight = CONFIG.POSITION_WEIGHTS[key] || 0;
@@ -77,7 +101,14 @@ const PlayerPool = {
       candidates.push({ key: key, weight: weight, list: pickable });
     });
 
-    if (candidates.length === 0) return null;
+    if (candidates.length === 0) {
+      // 通常の選手が出せない状況（投手枠しか残っておらず投手を引き当てられない等）は
+      // 二刀流で埋める
+      if (twoWayPool.length > 0) {
+        return twoWayPool[Math.floor(Math.random() * twoWayPool.length)];
+      }
+      return null;
+    }
 
     let r = Math.random() * total;
     let chosen = candidates[candidates.length - 1];
@@ -86,7 +117,6 @@ const PlayerPool = {
       if (r <= 0) { chosen = candidates[i]; break; }
     }
 
-    // 2. そのポジションの中から1人
     const list = chosen.list;
     return list[Math.floor(Math.random() * list.length)];
   },

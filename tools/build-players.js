@@ -8,6 +8,8 @@
  *   data/<年度>/batters.tsv   NPB公式の打者成績（tools/fetch-npb.js が取得）
  *   data/<年度>/pitchers.tsv  NPB公式の投手成績（同上）
  *   data/positions.tsv        選手名 → 主ポジション（手で育てる表）
+ *   data/twoway.tsv           二刀流選手（投打の両方をここに書く）
+ *   data/ages.tsv             選手名 → 生まれた年（任意）
  *   data/dataset.json         出典・年度範囲などのメタ情報
  *
  * 【出力】
@@ -30,16 +32,14 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const dataDir = path.join(root, 'data');
 
-
-/* ============================================================
-   1. ポジションの定義
-   ============================================================ */
-
 const POSITIONS = ['投', '捕', '一', '二', '三', '遊', '左', '中', '右'];
 
+/* 年齢が分からない選手を、データに初めて出てきた年に何歳だったとみなすか */
+const ASSUMED_DEBUT_AGE = 23;
+
 
 /* ============================================================
-   2. 評価の計算式（ここだけ直せば強さのバランスが変わる）
+   評価の計算式（ここだけ直せば強さのバランスが変わる）
    ============================================================ */
 
 const SCORE = {
@@ -47,14 +47,12 @@ const SCORE = {
   /* --- 打撃力: OPS（出塁率＋長打率）から --- */
   batting(obp, slg) {
     const ops = obp + slg;
-    // OPS .600 → 40点 / .800 → 70点 / 1.000 → 100点
     return clamp(Math.round((ops - 0.600) / 0.400 * 30 + 40), 20, 100);
   },
 
-  /* --- 長打力: 550打席あたりの本塁打から（表示用） --- */
+  /* --- 長打力: 550打席あたりの本塁打から --- */
   power(hr, pa) {
     const per550 = pa > 0 ? hr / pa * 550 : 0;
-    // 0本 → 20点 / 20本 → 65点 / 40本 → 92点
     return clamp(Math.round(20 + per550 * 2.1), 20, 100);
   },
 
@@ -64,7 +62,6 @@ const SCORE = {
       '中': 78, '遊': 72, '二': 70, '左': 58, '右': 58,
       '三': 52, '一': 40, '捕': 35, '投': 40,
     }[pos] ?? 50;
-    // 長打率と打率の差（＝長打の多さ）が小さいほど、俊足タイプとみなす
     const iso = slg - avg;
     const adj = clamp(Math.round((0.150 - iso) * 80), -12, 12);
     return clamp(base + adj, 15, 99);
@@ -84,14 +81,12 @@ const SCORE = {
     const eraScore = clamp(120 - era * 20, 20, 100);
     const k9 = ip > 0 ? k / ip * 9 : 0;
     const kScore = clamp((k9 - 4) * 10 + 40, 20, 100);
-    // 先発と救援では投球回の意味が違うので基準を変える
     const ipScore = isStarter
       ? clamp(ip / 180 * 100, 20, 100)
       : clamp(ip / 70 * 100, 20, 100);
     return clamp(Math.round(eraScore * 0.5 + kScore * 0.25 + ipScore * 0.25), 20, 100);
   },
 
-  /* --- 総合力 --- */
   overallBatter(bat, field, run) {
     return clamp(Math.round(bat * 0.60 + field * 0.25 + run * 0.15), 20, 100);
   },
@@ -100,36 +95,28 @@ const SCORE = {
   },
 };
 
-function clamp(n, min, max) {
-  return Math.min(max, Math.max(min, n));
-}
+function clamp(n, min, max) { return Math.min(max, Math.max(min, n)); }
 
 
 /* ============================================================
-   3. ファイルの読み込み
+   ファイルの読み込み
    ============================================================ */
 
-/** タブ区切りのファイルを読む。# で始まる行と空行は無視する。 */
 function readTsv(file) {
-  const text = fs.readFileSync(file, 'utf8');
-  const lines = text.split(/\r?\n/)
-    .filter(function (line) {
-      return line.trim() !== '' && !line.startsWith('#');
-    });
+  if (!fs.existsSync(file)) return [];
+  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
+    .filter(function (line) { return line.trim() !== '' && !line.startsWith('#'); });
   if (lines.length === 0) return [];
 
   const header = lines[0].split('\t');
   return lines.slice(1).map(function (line) {
     const cells = line.split('\t');
     const row = {};
-    header.forEach(function (key, i) {
-      row[key.trim()] = (cells[i] || '').trim();
-    });
+    header.forEach(function (key, i) { row[key.trim()] = (cells[i] || '').trim(); });
     return row;
   });
 }
 
-/** 「.322」「1.93」などの文字列を数値にする。読めなければ null。 */
 function num(s) {
   if (s === undefined || s === null) return null;
   const t = String(s).trim().replace(/,/g, '');
@@ -146,133 +133,237 @@ function innings(s) {
   return num(t) ?? 0;
 }
 
-/** 選手名のゆれ（全角空白・連続空白）をならして、対応表と突き合わせる用のキーにする。 */
 function nameKey(name) {
   return String(name).replace(/[\s　]+/g, ' ').trim();
 }
 
 
 /* ============================================================
-   4. 組み立て
+   選手1人ぶんのデータを作る部品
+   ============================================================ */
+
+function batterRatings(pos, row) {
+  const pa  = num(row['打席']) ?? 0;
+  const avg = num(row['打率']) ?? 0;
+  const hr  = num(row['本塁打']) ?? 0;
+  const rbi = num(row['打点']) ?? 0;
+  const obp = num(row['出塁率']) ?? 0;
+  const slg = num(row['長打率']) ?? 0;
+
+  const bat   = SCORE.batting(obp, slg);
+  const power = SCORE.power(hr, pa);
+  const run   = SCORE.run(pos, avg, slg);
+  const field = SCORE.fielding(pos, run);
+
+  return {
+    r: { bat: bat, power: power, run: run, field: field },
+    ovr: SCORE.overallBatter(bat, field, run),
+    pa: pa,
+    // 計算に使う数値（画面表示用の s とは別に、生の数字で持っておく）
+    n: { pa: pa, avg: avg, hr: hr, rbi: rbi, obp: obp, slg: slg },
+    s: {
+      打率: row['打率'], 本塁打: hr, 打点: rbi,
+      出塁率: row['出塁率'], 長打率: row['長打率'],
+      OPS: (obp + slg).toFixed(3).replace(/^0/, ''),
+    },
+  };
+}
+
+function pitcherRatings(row) {
+  const g   = num(row['登板']) ?? 0;
+  const ip  = innings(row['投球回']);
+  const w   = num(row['勝']) ?? 0;
+  const l   = num(row['敗']) ?? 0;
+  const era = num(row['防御率']) ?? 9.99;
+  const k   = num(row['奪三振']) ?? 0;
+
+  const isStarter = g > 0 && (ip / g) >= 3;
+  const pitch = SCORE.pitching(era, ip, k, isStarter);
+
+  return {
+    pitch: pitch,
+    ovr: SCORE.overallPitcher(pitch),
+    role: isStarter ? '先発' : '救援',
+    ip: ip,
+    n: { g: g, ip: ip, w: w, l: l, era: era, k: k },
+    s: {
+      防御率: row['防御率'], 勝敗: w + '勝' + l + '敗',
+      投球回: row['投球回'], 奪三振: k, 登板: g,
+    },
+  };
+}
+
+
+/* ============================================================
+   組み立て
    ============================================================ */
 
 function build() {
-  // --- 4-1. 主ポジションの対応表を読む ---
-  const posFile = path.join(dataDir, 'positions.tsv');
-  const posRows = readTsv(posFile);
+  // --- 主ポジションの対応表 ---
   const posMap = new Map();
-
-  posRows.forEach(function (row) {
+  readTsv(path.join(dataDir, 'positions.tsv')).forEach(function (row) {
     const name = nameKey(row['選手名']);
     const pos = (row['主ポジション'] || '').trim();
     if (!name || !pos) return;
     if (!POSITIONS.includes(pos)) {
-      throw new Error(
-        'data/positions.tsv に知らないポジション記号があります: "' + pos + '" (' + name + ')\n' +
-        '使えるのは ' + POSITIONS.join(' ') + ' です。'
-      );
+      throw new Error('data/positions.tsv に知らないポジション記号: "' + pos + '" (' + name + ')');
     }
-    const sub = (row['副ポジション'] || '').split(/[,、\s]+/).filter(function (p) {
-      return POSITIONS.includes(p);
-    });
+    const sub = (row['副ポジション'] || '').split(/[,、\s]+/)
+      .filter(function (p) { return POSITIONS.includes(p); });
     posMap.set(name, { pos: pos, sub: sub });
   });
 
-  // --- 4-2. 年度フォルダを探す ---
+  // --- 生まれた年 ---
+  const birthMap = new Map();
+  readTsv(path.join(dataDir, 'ages.tsv')).forEach(function (row) {
+    const name = nameKey(row['選手名']);
+    const y = num(row['生まれた年']);
+    if (name && y) birthMap.set(name, y);
+  });
+
+  // --- 二刀流 ---
+  const twoWayRows = readTsv(path.join(dataDir, 'twoway.tsv'));
+  const twoWayKeys = new Set(twoWayRows.map(function (r) {
+    return nameKey(r['選手名']) + '@' + r['年度'];
+  }));
+
+  // --- 年度フォルダ ---
   const years = fs.readdirSync(dataDir)
-    .filter(function (d) { return /^\d{4}$/.test(d); })
-    .sort();
+    .filter(function (d) { return /^\d{4}$/.test(d); }).sort();
+
+  // --- 先に「その選手がデータに初めて出てきた年」を数える ---
+  const debut = new Map();
+  const noteYear = function (name, y) {
+    const cur = debut.get(name);
+    if (cur === undefined || y < cur) debut.set(name, y);
+  };
+  years.forEach(function (year) {
+    const y = Number(year);
+    readTsv(path.join(dataDir, year, 'batters.tsv')).forEach(function (r) { noteYear(nameKey(r['選手名']), y); });
+    readTsv(path.join(dataDir, year, 'pitchers.tsv')).forEach(function (r) { noteYear(nameKey(r['選手名']), y); });
+  });
+  twoWayRows.forEach(function (r) { noteYear(nameKey(r['選手名']), Number(r['年度'])); });
+
+  /**
+   * 年齢とキャリア年数を付ける。
+   *
+   * NPB公式の個人成績には生年月日が無いので、
+   *   ・data/ages.tsv に書いてあれば、その生まれた年から正確に計算する
+   *   ・書いていなければ「データに初めて出てきた年に23歳だった」とみなす（推定）
+   * ただし、データのいちばん古い年（2005年）に初登場している選手は、
+   * それ以前から活躍していた可能性が高く推定できない。その場合は age を null にする。
+   */
+  const firstYear = Number(years[0]);
+  const career = function (name, year) {
+    const d = debut.get(name) ?? year;
+    const birth = birthMap.get(name);
+
+    if (birth) {
+      return { d: d, car: year - d + 1, age: year - birth, ageEst: 0 };
+    }
+    if (d <= firstYear) {
+      // データの最初の年からいる＝何年目か分からない
+      return { d: d, car: year - d + 1, age: null, ageEst: 2 };
+    }
+    return {
+      d: d,
+      car: year - d + 1,
+      age: ASSUMED_DEBUT_AGE + (year - d),
+      ageEst: 1,
+    };
+  };
 
   const players = [];
-  const missing = new Map();   // 対応表に無い野手（あとで報告する）
+  const missing = new Map();
   let idSeq = 0;
 
+  // --- 二刀流（通常データより先に作る） ---
+  twoWayRows.forEach(function (row) {
+    const name = nameKey(row['選手名']);
+    const year = Number(row['年度']);
+    const pos = (row['野手ポジション'] || '').trim();
+    if (!name || !year || !POSITIONS.includes(pos)) return;
+
+    const bat = batterRatings(pos, row);
+    const pit = pitcherRatings(row);
+    const c = career(name, year);
+
+    players.push({
+      id: 't' + (++idSeq),
+      name: name, team: row['チーム'] || '', year: year,
+      kind: 'twoway',
+      pos: pos,
+      role: pit.role,
+      age: c.age, ageEst: c.ageEst, d: c.d, car: c.car,
+      pa: bat.pa, ip: pit.ip,
+      n: bat.n, np: pit.n,
+      r: {
+        bat: bat.r.bat, power: bat.r.power, run: bat.r.run,
+        field: bat.r.field, pitch: pit.pitch,
+      },
+      ovr: Math.max(bat.ovr, pit.ovr),
+      ovrBat: bat.ovr,
+      ovrPit: pit.ovr,
+      s: bat.s,
+      sp: pit.s,
+    });
+  });
+
+  // --- 通常の選手 ---
   years.forEach(function (year) {
     const y = Number(year);
 
-    // --- 打者 ---
-    const batFile = path.join(dataDir, year, 'batters.tsv');
-    if (fs.existsSync(batFile)) {
-      readTsv(batFile).forEach(function (row) {
-        const name = nameKey(row['選手名']);
-        if (!name) return;
+    readTsv(path.join(dataDir, year, 'batters.tsv')).forEach(function (row) {
+      const name = nameKey(row['選手名']);
+      if (!name) return;
+      if (twoWayKeys.has(name + '@' + y)) return;   // 二刀流として作成済み
 
-        const entry = posMap.get(name);
-        if (!entry) {
-          // 守備位置が分からない選手は登場させない
-          missing.set(name, (missing.get(name) || 0) + 1);
-          return;
-        }
+      const entry = posMap.get(name);
+      if (!entry) { missing.set(name, (missing.get(name) || 0) + 1); return; }
 
-        const pa  = num(row['打席']) ?? 0;
-        const avg = num(row['打率']) ?? 0;
-        const hr  = num(row['本塁打']) ?? 0;
-        const rbi = num(row['打点']) ?? 0;
-        const obp = num(row['出塁率']) ?? 0;
-        const slg = num(row['長打率']) ?? 0;
+      const bat = batterRatings(entry.pos, row);
+      const c = career(name, y);
 
-        const bat   = SCORE.batting(obp, slg);
-        const power = SCORE.power(hr, pa);
-        const run   = SCORE.run(entry.pos, avg, slg);
-        const field = SCORE.fielding(entry.pos, run);
+      const rec = {
+        id: 'b' + (++idSeq),
+        name: name, team: row['チーム'] || '', year: y,
+        kind: 'batter',
+        pos: entry.pos,
+        age: c.age, ageEst: c.ageEst, d: c.d, car: c.car,
+        pa: bat.pa,
+        n: bat.n,
+        r: { bat: bat.r.bat, power: bat.r.power, run: bat.r.run, field: bat.r.field, pitch: 0 },
+        ovr: bat.ovr,
+        s: bat.s,
+      };
+      if (entry.sub.length > 0) rec.sub = entry.sub;
+      players.push(rec);
+    });
 
-        const rec = {
-          id: 'b' + (++idSeq),
-          name: name,
-          team: row['チーム'] || '',
-          year: y,
-          kind: 'batter',
-          pos: entry.pos,
-          r: { bat: bat, power: power, run: run, field: field, pitch: 0 },
-          ovr: SCORE.overallBatter(bat, field, run),
-          s: {
-            打率: row['打率'], 本塁打: hr, 打点: rbi,
-            出塁率: row['出塁率'], 長打率: row['長打率'],
-            OPS: (obp + slg).toFixed(3).replace(/^0/, ''),
-          },
-        };
-        // 副ポジションは書かれているときだけ持たせる（データを小さくするため）
-        if (entry.sub.length > 0) rec.sub = entry.sub;
-        players.push(rec);
+    readTsv(path.join(dataDir, year, 'pitchers.tsv')).forEach(function (row) {
+      const name = nameKey(row['選手名']);
+      if (!name) return;
+      if (twoWayKeys.has(name + '@' + y)) return;   // 二刀流として作成済み
+
+      const pit = pitcherRatings(row);
+      const run = SCORE.run('投', 0, 0);
+      const c = career(name, y);
+
+      players.push({
+        id: 'p' + (++idSeq),
+        name: name, team: row['チーム'] || '', year: y,
+        kind: 'pitcher',
+        pos: '投',
+        role: pit.role,
+        age: c.age, ageEst: c.ageEst, d: c.d, car: c.car,
+        ip: pit.ip,
+        np: pit.n,
+        r: { bat: 12, power: 20, run: run, field: SCORE.fielding('投', run), pitch: pit.pitch },
+        ovr: pit.ovr,
+        sp: pit.s,
+        s: pit.s,
       });
-    }
-
-    // --- 投手 ---
-    const pitFile = path.join(dataDir, year, 'pitchers.tsv');
-    if (fs.existsSync(pitFile)) {
-      readTsv(pitFile).forEach(function (row) {
-        const name = nameKey(row['選手名']);
-        if (!name) return;
-
-        const g   = num(row['登板']) ?? 0;
-        const ip  = innings(row['投球回']);
-        const w   = num(row['勝']) ?? 0;
-        const l   = num(row['敗']) ?? 0;
-        const era = num(row['防御率']) ?? 9.99;
-        const k   = num(row['奪三振']) ?? 0;
-
-        const isStarter = g > 0 && (ip / g) >= 3;
-        const pitch = SCORE.pitching(era, ip, k, isStarter);
-        const run   = SCORE.run('投', 0, 0);
-
-        players.push({
-          id: 'p' + (++idSeq),
-          name: name,
-          team: row['チーム'] || '',
-          year: y,
-          kind: 'pitcher',
-          pos: '投',
-          role: isStarter ? '先発' : '救援',
-          r: { bat: 12, power: 20, run: run, field: SCORE.fielding('投', run), pitch: pitch },
-          ovr: SCORE.overallPitcher(pitch),
-          s: {
-            防御率: row['防御率'], 勝敗: w + '勝' + l + '敗',
-            投球回: row['投球回'], 奪三振: k,
-            登板: g,
-          },
-        });
-      });
-    }
+    });
   });
 
   return { players: players, years: years, missing: missing };
@@ -280,7 +371,7 @@ function build() {
 
 
 /* ============================================================
-   5. 書き出し
+   書き出し
    ============================================================ */
 
 function main() {
@@ -292,12 +383,9 @@ function main() {
     process.exit(1);
   }
 
-  // メタ情報
   let meta = {};
   const metaFile = path.join(dataDir, 'dataset.json');
-  if (fs.existsSync(metaFile)) {
-    meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
-  }
+  if (fs.existsSync(metaFile)) meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
 
   const payload = {
     builtAt: new Date().toISOString().slice(0, 10),
@@ -308,33 +396,25 @@ function main() {
     players: players,
   };
 
-  // ゲームが読むファイル（<script> で読み込むだけなので、
-  // ローカルでファイルを直接開いても動く）
   const jsDir = path.join(root, 'js');
   fs.mkdirSync(jsDir, { recursive: true });
-  const jsBody =
+  fs.writeFileSync(path.join(jsDir, 'players-data.js'),
     '/* 自動生成ファイル。直接編集しないこと。\n' +
     '   作り直すには:  node tools/build-players.js  */\n' +
     "'use strict';\n" +
-    'window.PLAYERS_DATA = ' + JSON.stringify(payload) + ';\n';
-  fs.writeFileSync(path.join(jsDir, 'players-data.js'), jsBody);
+    'window.PLAYERS_DATA = ' + JSON.stringify(payload) + ';\n');
 
-  // 中身を人が読むとき用のJSON（ゲームは読まない）
-  fs.writeFileSync(
-    path.join(dataDir, 'players.json'),
-    JSON.stringify(payload, null, 1)
-  );
+  fs.writeFileSync(path.join(dataDir, 'players.json'), JSON.stringify(payload, null, 1));
 
-  // --- 結果の報告 ---
+  const byKind = { batter: 0, pitcher: 0, twoway: 0 };
   const byPos = {};
   POSITIONS.forEach(function (p) { byPos[p] = 0; });
-  players.forEach(function (p) { byPos[p.pos]++; });
+  players.forEach(function (p) { byKind[p.kind]++; byPos[p.pos]++; });
 
   console.log('選手データを作りました: ' + players.length + '人ぶん');
   console.log('  年度: ' + result.years[0] + '〜' + result.years[result.years.length - 1]);
-  console.log('  内訳: ' + POSITIONS.map(function (p) {
-    return p + ' ' + byPos[p];
-  }).join(' / '));
+  console.log('  種別: 野手 ' + byKind.batter + ' / 投手 ' + byKind.pitcher + ' / 二刀流 ' + byKind.twoway);
+  console.log('  守備: ' + POSITIONS.map(function (p) { return p + ' ' + byPos[p]; }).join(' / '));
   console.log('  → js/players-data.js');
   console.log('  → data/players.json');
 
@@ -342,9 +422,7 @@ function main() {
     console.log('');
     console.log('※ 守備位置が分からないので登場しない野手が ' + result.missing.size + '人 います。');
     console.log('  data/positions.tsv に追記すると登場するようになります:');
-    Array.from(result.missing.keys()).sort().forEach(function (n) {
-      console.log('    ' + n);
-    });
+    Array.from(result.missing.keys()).sort().forEach(function (n) { console.log('    ' + n); });
   }
 }
 

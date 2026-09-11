@@ -82,12 +82,35 @@ const UI = {
    */
   playerCard: function (player) {
     const isP = player.kind === 'pitcher';
+    const isTW = player.kind === 'twoway';
 
-    // 主な成績を2〜3個だけ
-    const s = player.s;
-    const statLine = isP
-      ? [['防御率', s.防御率], ['奪三振', s.奪三振], ['勝敗', s.勝敗]]
-      : [['打率', s.打率], ['本塁打', s.本塁打 + '本'], ['OPS', s.OPS]];
+    // 主な成績（二刀流は打撃と投球の両方を出す）
+    const batLine = [['打率', player.s.打率], ['本塁打', player.s.本塁打 + '本'], ['OPS', player.s.OPS]];
+    const pitLine = player.sp
+      ? [['防御率', player.sp.防御率], ['奪三振', player.sp.奪三振], ['勝敗', player.sp.勝敗]]
+      : [];
+
+    const statBlock = function (rows) {
+      return '<div class="card__stats">' + rows.map(function (row) {
+        return '<div class="kv"><span>' + esc(row[0]) + '</span><b>' +
+          esc(String(row[1])) + '</b></div>';
+      }).join('') + '</div>';
+    };
+
+    let stats, bars;
+    if (isTW) {
+      stats = '<p class="card__split">打者として</p>' + statBlock(batLine) +
+              '<p class="card__split">投手として</p>' + statBlock(pitLine);
+      bars = this.bar('打撃', player.r.bat) + this.bar('長打', player.r.power) +
+             this.bar('走力', player.r.run) + this.bar('投手力', player.r.pitch);
+    } else if (isP) {
+      stats = statBlock(pitLine);
+      bars = this.bar('投手力', player.r.pitch) + this.bar('守備', player.r.field);
+    } else {
+      stats = statBlock(batLine);
+      bars = this.bar('打撃', player.r.bat) + this.bar('長打', player.r.power) +
+             this.bar('走力', player.r.run) + this.bar('守備', player.r.field);
+    }
 
     // 守れる場所（A と B だけ出す。多すぎると読めなくなるため）
     const fitTags = fitListOf(player)
@@ -96,48 +119,73 @@ const UI = {
         return '<span class="fit fit--' + f.grade + '">' + f.name + ' ' + f.grade + '</span>';
       }).join('');
 
+    const posLabel = isTW
+      ? '二刀流<small>投／' + esc(posName(player.pos)) + '</small>'
+      : esc(posName(player.pos)) + (player.role ? '<small>' + esc(player.role) + '</small>' : '');
+
     return '' +
-      '<article class="card">' +
+      '<article class="card' + (isTW ? ' card--twoway' : '') + '">' +
         '<div class="card__top">' +
           '<div class="card__avatar">' + this.avatar(player) + '</div>' +
           '<div class="card__id">' +
-            '<div class="card__pos" data-pos="' + player.pos + '">' + esc(posName(player.pos)) +
-              (player.role ? '<small>' + esc(player.role) + '</small>' : '') +
-            '</div>' +
+            '<div class="card__pos" data-pos="' + (isTW ? '投' : player.pos) + '">' + posLabel + '</div>' +
             '<h2 class="card__name">' + esc(player.name) + '</h2>' +
-            '<p class="card__team">' + esc(player.team) + '　' + player.year + '年</p>' +
+            '<p class="card__team">' + esc(player.team) + '　' + player.year + '年　' +
+              this.ageText(player) + '</p>' +
           '</div>' +
           '<div class="card__ovr"><span>総合</span><b>' + player.ovr + '</b></div>' +
         '</div>' +
 
-        '<div class="card__stats">' +
-          statLine.map(function (row) {
-            return '<div class="kv"><span>' + esc(row[0]) + '</span><b>' + esc(String(row[1])) + '</b></div>';
-          }).join('') +
-        '</div>' +
-
-        '<div class="card__bars">' +
-          (isP
-            ? this.bar('投手力', player.r.pitch) + this.bar('守備', player.r.field)
-            : this.bar('打撃', player.r.bat) + this.bar('長打', player.r.power) +
-              this.bar('走力', player.r.run) + this.bar('守備', player.r.field)) +
-        '</div>' +
+        stats +
+        '<div class="card__bars">' + bars + '</div>' +
 
         '<div class="card__fits">' +
-          '<span class="card__fits-label">守れる所</span>' + (fitTags || '<span class="fit fit--none">投手のみ</span>') +
+          '<span class="card__fits-label">守れる所</span>' +
+          (fitTags || '<span class="fit fit--none">投手のみ</span>') +
         '</div>' +
       '</article>';
   },
 
-  /** 獲得済みメンバーの小さな一覧 */
-  rosterChips: function (players) {
-    if (players.length === 0) {
+  /** 「28歳」または「28歳ごろ」（推定のとき）。分からないときは空 */
+  ageText: function (player) {
+    if (!player.age) return '';
+    return player.age + '歳' + (player.ageEst === 1 ? 'ごろ' : '');
+  },
+
+  /** 獲得済みメンバーの小さな一覧。entries は { player, role } の配列 */
+  rosterChips: function (entries) {
+    if (!entries || entries.length === 0) {
       return '<p class="roster__empty">まだ0人。ここに獲得した選手が並びます。</p>';
     }
-    return players.map(function (p) {
-      return '<span class="chip" data-pos="' + p.pos + '">' +
-        '<b>' + esc(p.pos) + '</b>' + esc(p.name) + '</span>';
+    return entries.map(function (e) {
+      const p = e.player;
+      // 投手として取った二刀流は「投」と表示する
+      const mark = e.role === 'pitcher' ? '投' : p.pos;
+      return '<span class="chip" data-pos="' + mark + '">' +
+        '<b>' + esc(mark) + '</b>' + esc(p.name) + '</span>';
     }).join('');
+  },
+
+  /** メンバー確認画面などで使う、少し大きめの一覧 */
+  rosterRows: function (entries, options) {
+    const opt = options || {};
+    return '<ol class="rows' + (opt.number ? '' : ' rows--plain') + '">' + entries.map(function (e, i) {
+      const p = e.player;
+      const mark = e.role === 'pitcher' ? '投' : p.pos;
+      const sub = e.role === 'pitcher'
+        ? (p.sp ? '防御率 ' + p.sp.防御率 + '・' + p.sp.奪三振 + '奪三振' : '')
+        : (p.s ? '打率 ' + p.s.打率 + '・' + p.s.本塁打 + '本' : '');
+      return '' +
+        '<li class="row">' +
+          (opt.number ? '<span class="row__order">' + (i + 1) + '</span>' : '') +
+          '<span class="row__pos" data-pos="' + mark + '">' + esc(mark) + '</span>' +
+          '<span class="row__name">' + esc(p.name) +
+            (p.kind === 'twoway' ? '<i class="tag-tw">二刀流</i>' : '') +
+            '<small>' + esc(p.team) + ' ' + p.year + '・' + esc(sub) + '</small>' +
+          '</span>' +
+          '<span class="row__ovr">' + p.ovr + '</span>' +
+        '</li>';
+    }).join('') + '</ol>';
   },
 };
 

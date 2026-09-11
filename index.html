@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>最強チームメーカー</title>
-  <meta name="description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！ 取るか、見送るか。9人集めること自体が難しい野球チーム編成ゲーム。">
+  <meta name="description" content="ランダムに現れる選手を取捨選択して、最強の10人を作れ！ 取るか、見送るか。集めたメンバーで143試合のシーズンも戦える野球チーム編成ゲーム。">
 
   <meta property="og:title" content="最強チームメーカー">
-  <meta property="og:description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！">
+  <meta property="og:description" content="ランダムに現れる選手を取捨選択して、最強の10人を作れ！">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
 
@@ -29,7 +29,7 @@
           <span class="hero__title-main">最強チーム</span><span class="hero__title-sub">メーカー</span>
         </h1>
         <p class="hero__lead">
-          ランダムに現れる選手を取捨選択して、<br>最強の9人を作れ！
+          ランダムに現れる選手を取捨選択して、<br>最強の10人を作れ！
         </p>
       </header>
 
@@ -38,10 +38,11 @@
         <ul class="rules__list">
           <li><span class="rules__num">1</span>選手はポジション関係なく<b>完全ランダム</b>で1人ずつ登場</li>
           <li><span class="rules__num">2</span>できるのは「<b>取る</b>」か「<b>見送る</b>」だけ</li>
-          <li><span class="rules__num">3</span>見送れるのは<b>5回まで</b>。使い切ったら取るしかない</li>
-          <li><span class="rules__num">4</span><b>9人</b>集めたら打順と守備位置を決めて完成</li>
+          <li><span class="rules__num">3</span>集めるのは<b>投手1人＋野手9人</b>の10人</li>
+          <li><span class="rules__num">4</span>見送れるのは<b>5回まで</b>。残り2人になったら必ず取る</li>
+          <li><span class="rules__num">5</span>そろったら打順を決めて、<b>143試合</b>を戦える</li>
         </ul>
-        <p class="rules__note">※ 捕手が来ない。投手が5人になる。ショートがいない。それがこのゲームです。</p>
+        <p class="rules__note">※ 捕手が来ない。ショートがいない。投手が最後まで出ない。それがこのゲームです。</p>
       </div>
 
       <div class="ad-slot" data-ad-slot="top-before-start"></div>
@@ -54,7 +55,8 @@
         <p data-meta-source></p>
         <p class="footer__small">
           選手写真・球団ロゴ・球団名の商標は使用していません。<br>
-          「打撃力」「走力」「守備力」「守備適性」は本ゲーム独自の指標です。
+          「打撃力」「走力」「守備力」「守備適性」および<br>
+          シーズンの成績・順位は、本ゲームによる架空のシミュレーションです。
         </p>
       </footer>
 
@@ -62,15 +64,15 @@
   </section>
 
 
-  <!-- ============ ② ガチャ画面 ============ -->
+  <!-- ============ ② 獲得画面 ============ -->
   <section class="screen" id="screen-game">
 
-    <!-- 上に固定される情報バー -->
     <div class="gamebar">
       <div class="gamebar__inner">
         <div class="gamebar__team">
           <span class="gamebar__label">現在のチーム</span>
-          <strong id="g-count">0 / 9</strong>
+          <strong id="g-count">0 / 10</strong>
+          <span class="gamebar__need" id="g-need"></span>
         </div>
         <div class="gamebar__pass" id="g-pass-left">見送り残り：5回</div>
       </div>
@@ -81,7 +83,13 @@
       <div class="flash" id="g-flash"></div>
       <div id="g-card"></div>
 
-      <div class="choice">
+      <div class="choice" id="g-choice">
+        <button type="button" class="btn btn--take" id="btn-take-p" hidden>
+          投手として取る<span class="btn__sub"></span>
+        </button>
+        <button type="button" class="btn btn--take2" id="btn-take-f" hidden>
+          野手として取る<span class="btn__sub"></span>
+        </button>
         <button type="button" class="btn btn--pass" id="btn-pass">
           見送る<span class="btn__sub">残り 5 回</span>
         </button>
@@ -102,19 +110,50 @@
   </section>
 
 
-  <!-- ============ ③ 編成画面 ============ -->
+  <!-- ============ ③ メンバー確認画面 ============ -->
+  <section class="screen" id="screen-roster">
+    <div class="container">
+      <header class="pagehead">
+        <p class="pagehead__eyebrow">MEMBERS</p>
+        <h1 class="pagehead__title">あなたのチームは<br>10人揃いました！</h1>
+        <p class="pagehead__lead">投手1人・野手9人。ここからどうしますか？</p>
+      </header>
+
+      <div id="ro-list"></div>
+
+      <div class="cta">
+        <button type="button" class="btn btn--primary btn--xl" id="btn-go-season">
+          投手を補充してシーズン開始
+          <span class="btn__sub">143試合を戦って順位を見る</span>
+        </button>
+      </div>
+      <div class="cta">
+        <button type="button" class="btn btn--ghost" id="btn-go-lineup">
+          スタメンを組む
+          <span class="btn__sub">打順と守備位置を決めてチーム評価だけ見る</span>
+        </button>
+      </div>
+
+      <div class="section" id="ro-rest"></div>
+
+      <footer class="footer"><p data-meta-source></p></footer>
+    </div>
+  </section>
+
+
+  <!-- ============ ④ 打順・守備位置 ============ -->
   <section class="screen" id="screen-lineup">
     <div class="container">
       <header class="pagehead">
         <h1 class="pagehead__title">打順・守備位置</h1>
         <p class="pagehead__lead">
-          ▲▼で打順を入れ替え、プルダウンで守備位置を選びます。<br>
+          ▲▼で打順を入れ替え、プルダウンで守る場所を選びます。<br>
           適性が低い場所に置くこともできます（そのぶん評価は下がります）。
         </p>
       </header>
 
+      <div id="l-head"></div>
       <div class="warn" id="l-warn"></div>
-
       <ol class="slots" id="l-list"></ol>
 
       <div class="cta cta--row">
@@ -125,18 +164,117 @@
   </section>
 
 
-  <!-- ============ ④ 結果画面 ============ -->
-  <section class="screen" id="screen-result">
+  <!-- ============ ⑤ シーズン開始前 ============ -->
+  <section class="screen" id="screen-season-setup">
     <div class="container">
       <header class="pagehead">
-        <h1 class="pagehead__title">チーム評価</h1>
+        <p class="pagehead__eyebrow">SEASON SETUP</p>
+        <h1 class="pagehead__title">シーズン開始前</h1>
+        <p class="pagehead__lead">投手を補充して、143試合を戦う準備をします。</p>
       </header>
+
+      <div class="section">
+        <h2 class="section__title">チーム名</h2>
+        <input type="text" id="ss-name" class="textinput" value="マイチーム" maxlength="12"
+               placeholder="チーム名（12文字まで）">
+      </div>
+
+      <div class="section">
+        <h2 class="section__title">リーグを選ぶ</h2>
+        <div class="radios" id="ss-league">
+          <label class="radio"><input type="radio" name="league" value="central"><span>セ・リーグ</span></label>
+          <label class="radio"><input type="radio" name="league" value="pacific" checked><span>パ・リーグ</span></label>
+        </div>
+        <p class="section__lead" id="ss-dh-note"></p>
+      </div>
+
+      <div class="section">
+        <h2 class="section__title">投手を補充する</h2>
+        <p class="section__lead">
+          1年を戦うには投手が足りません。候補の中から選んでください。<br>
+          <b id="ss-pool-info"></b>
+        </p>
+        <div class="cta">
+          <button type="button" class="btn btn--ghost" id="btn-pool-auto">おまかせで選ぶ</button>
+        </div>
+        <div class="picks" id="ss-pool"></div>
+      </div>
+
+      <div class="section">
+        <h2 class="section__title">投手の役割</h2>
+        <p class="section__lead">先発・中継ぎ・セットアッパー・抑えを決めます。</p>
+        <ul class="roles" id="ss-roles"></ul>
+      </div>
+
+      <div class="section">
+        <h2 class="section__title">打順・守備位置</h2>
+        <div id="ss-lineup"></div>
+        <div class="cta">
+          <button type="button" class="btn btn--ghost" id="btn-set-lineup">打順・守備を決める</button>
+        </div>
+      </div>
+
+      <div class="cta">
+        <button type="button" class="btn btn--primary btn--xl" id="btn-opening" disabled>開幕</button>
+      </div>
+
+      <footer class="footer"><p data-meta-source></p></footer>
+    </div>
+  </section>
+
+
+  <!-- ============ ⑥ シーズン結果 ============ -->
+  <section class="screen" id="screen-season">
+    <div class="container">
+      <header class="pagehead" id="sr-head"></header>
+
+      <div class="tabs" id="sr-tabs">
+        <button type="button" data-tab="bat" class="is-on">打撃成績</button>
+        <button type="button" data-tab="pit">投球成績</button>
+        <button type="button" data-tab="rank">順位表</button>
+      </div>
+
+      <div id="sr-body"></div>
+
+      <div class="section" id="sr-series"></div>
+
+      <p class="next-note" id="sr-next-note"></p>
+      <div class="cta">
+        <button type="button" class="btn btn--primary btn--xl" id="btn-cs" hidden>CSへ進む</button>
+        <button type="button" class="btn btn--primary btn--xl" id="btn-ns" hidden>日本シリーズへ進む</button>
+      </div>
+
+      <div id="sr-final"></div>
+
+      <div class="ad-slot" data-ad-slot="result"></div>
+
+      <div id="sr-actions" hidden>
+        <div class="cta">
+          <button type="button" class="btn btn--primary" id="btn-season-image">結果を画像にする</button>
+        </div>
+        <div class="cta cta--row">
+          <button type="button" class="btn btn--x" id="btn-season-x">Xでシェア</button>
+          <button type="button" class="btn btn--ghost" id="btn-season-again">もう一度あそぶ</button>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <p data-meta-source></p>
+        <p class="footer__small">シーズンの成績・順位はこのゲームによる架空のシミュレーションです。</p>
+      </footer>
+    </div>
+  </section>
+
+
+  <!-- ============ ⑦ チーム評価（スタメンを組む道） ============ -->
+  <section class="screen" id="screen-result">
+    <div class="container">
+      <header class="pagehead"><h1 class="pagehead__title">チーム評価</h1></header>
 
       <div id="r-body"></div>
 
       <div class="ad-slot" data-ad-slot="result"></div>
 
-      <!-- 自分で作ったとき -->
       <div id="r-actions-own">
         <div class="cta">
           <button type="button" class="btn btn--primary" id="btn-result-image">このチームを画像にする</button>
@@ -152,26 +290,23 @@
         </div>
       </div>
 
-      <!-- 他人の結果を見ているとき（result.html で使う） -->
       <div id="r-actions-guest" hidden>
         <div class="cta">
           <a class="btn btn--primary" href="index.html">自分も作ってみる</a>
         </div>
       </div>
 
-      <footer class="footer">
-        <p data-meta-source></p>
-      </footer>
+      <footer class="footer"><p data-meta-source></p></footer>
     </div>
   </section>
 
 </div>
 
 
-<!-- 9人そろったときの演出 -->
+<!-- 演出 -->
 <div class="complete" id="complete-overlay">
   <div class="complete__inner">
-    <p class="complete__big">9人集まりました！</p>
+    <p class="complete__big">メンバーが揃いました！</p>
     <p class="complete__sub"></p>
   </div>
 </div>
@@ -200,7 +335,11 @@
 <script src="js/ui.js"></script>
 <script src="js/evaluate.js"></script>
 <script src="js/game.js"></script>
+<script src="js/roster.js"></script>
 <script src="js/lineup.js"></script>
+<script src="js/season.js"></script>
+<script src="js/season-ui.js"></script>
+<script src="js/season-result.js"></script>
 <script src="js/share.js"></script>
 <script src="js/result.js"></script>
 <script src="js/ads.js"></script>

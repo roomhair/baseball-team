@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
-  const slots = ShareCode.decode(code);
-  if (!slots) {
+  const saved = ShareCode.decode(code);
+  if (!saved) {
     host.innerHTML = '<p class="placeholder">' +
       'この結果URLは読み取れませんでした。<br>' +
       'URLが途中で切れているか、書き換えられている可能性があります。' +
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
-  if (!Result.showFromSlots(slots, { viewOnly: true })) {
+  if (!Result.showFromSaved(saved, { viewOnly: true })) {
     host.innerHTML = '<p class="placeholder">この結果は表示できませんでした。</p>';
     document.getElementById('r-actions-guest').hidden = false;
     return;
