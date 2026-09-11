@@ -416,48 +416,36 @@ const Season = {
     return this.rnd() < this.winProb(pa, pb) ? 'W' : 'L';
   },
 
-  /**
-   * リーグ戦を丸ごと計算する。
-   * 7チーム（自分＋6球団）が交流戦を含めて143試合ずつ戦う。
-   */
-  playLeague: function (teams) {
-    const self = this;
-    const n = teams.length;
-    const inter = this.TUNE.INTERLEAGUE_GAMES;
-    const leagueGames = CONFIG.SEASON_GAMES - inter;
-    const perRival = Math.floor(leagueGames / (n - 1));
-    const extra = leagueGames - perRival * (n - 1);   // 割り切れないぶん
+  /** 2チームの間で n 試合を戦わせる */
+  playSet: function (recA, recB, n) {
+    for (let k = 0; k < n; k++) {
+      const r = this.playGame(recA.team.pyth, recB.team.pyth);
+      if (r === 'D') { recA.d++; recB.d++; }
+      else if (r === 'W') { recA.w++; recB.l++; }
+      else { recA.l++; recB.w++; }
+    }
+  },
 
-    const rec = teams.map(function (t) {
-      return { team: t, w: 0, l: 0, d: 0 };
-    });
+  /** リーグ内の総当たり。games はそのリーグで戦う試合数の合計。 */
+  roundRobin: function (recs, games) {
+    const n = recs.length;
+    const per = Math.floor(games / (n - 1));
+    const extra = games - per * (n - 1);
 
-    // --- リーグ内の対戦 ---
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
-        // 余りぶんは先の組に1試合ずつ足す
-        const games = perRival + ((i + j) % (n - 1) < extra ? 1 : 0);
-        for (let k = 0; k < games; k++) {
-          const r = self.playGame(teams[i].pyth, teams[j].pyth);
-          if (r === 'D') { rec[i].d++; rec[j].d++; }
-          else if (r === 'W') { rec[i].w++; rec[j].l++; }
-          else { rec[i].l++; rec[j].w++; }
-        }
+        // 割り切れないぶんは、いくつかの組に1試合ずつ足す
+        const add = ((i + j) % (n - 1)) < extra ? 1 : 0;
+        this.playSet(recs[i], recs[j], per + add);
       }
     }
+  },
 
-    // --- 交流戦（相手はもう一方のリーグの平均的なチーム） ---
-    rec.forEach(function (r) {
-      for (let k = 0; k < inter; k++) {
-        const res = self.playGame(r.team.pyth, 0.500);
-        if (res === 'D') r.d++;
-        else if (res === 'W') r.w++;
-        else r.l++;
-      }
-    });
+  /** 試合数を143ちょうどにそろえ、勝率と順位をつける */
+  finalize: function (recs) {
+    const self = this;
 
-    // --- 143試合ちょうどに整える ---
-    rec.forEach(function (r) {
+    recs.forEach(function (r) {
       let total = r.w + r.l + r.d;
       while (total > CONFIG.SEASON_GAMES) {
         if (r.d > 0) r.d--; else if (r.l > r.w) r.l--; else r.w--;
@@ -472,22 +460,60 @@ const Season = {
       r.pct = (r.w + r.l) > 0 ? r.w / (r.w + r.l) : 0;
     });
 
-    // --- 順位をつける ---
-    rec.sort(function (a, b) {
+    recs.sort(function (a, b) {
       if (b.pct !== a.pct) return b.pct - a.pct;
       return b.w - a.w;
     });
-    rec.forEach(function (r, i) { r.rank = i + 1; });
+    recs.forEach(function (r, i) { r.rank = i + 1; });
 
-    // 首位とのゲーム差
-    const top = rec[0];
-    rec.forEach(function (r) {
+    const top = recs[0];
+    recs.forEach(function (r) {
       r.gb = ((top.w - r.w) + (r.l - top.l)) / 2;
     });
 
-    return rec;
+    return recs;
   },
 
+  /**
+   * 1年ぶんを丸ごと計算する。
+   *
+   * 自分のリーグ（自分＋6球団＝7チーム）と、もう一方のリーグ（6球団）の
+   * 両方を同時に動かす。交流戦は、実際にその2つのリーグの間で戦わせる。
+   * こうすることで、日本シリーズの相手も実在の球団になる。
+   *
+   *   自分のリーグ … リーグ内125試合 ＋ 交流戦18試合（相手6球団に3試合ずつ）＝143
+   *   相手リーグ   … リーグ内122試合 ＋ 交流戦21試合（相手7球団に3試合ずつ）＝143
+   */
+  playSeason: function (me, leagueKey) {
+    const self = this;
+    const myLeague = this.LEAGUES[leagueKey];
+    const otherKey = leagueKey === 'central' ? 'pacific' : 'central';
+    const otherLeague = this.LEAGUES[otherKey];
+
+    const mk = function (t) { return { team: t, w: 0, l: 0, d: 0 }; };
+
+    const myRecs = [me].concat(this.makeRivals(myLeague)).map(mk);
+    const otherRecs = this.makeRivals(otherLeague).map(mk);
+
+    const perOpponent = 3;                       // 交流戦は1球団あたり3試合
+    const myInter = otherRecs.length * perOpponent;   // 6球団 × 3 ＝ 18
+    const otherInter = myRecs.length * perOpponent;   // 7球団 × 3 ＝ 21
+
+    // リーグ内
+    this.roundRobin(myRecs, CONFIG.SEASON_GAMES - myInter);
+    this.roundRobin(otherRecs, CONFIG.SEASON_GAMES - otherInter);
+
+    // 交流戦
+    myRecs.forEach(function (a) {
+      otherRecs.forEach(function (b) { self.playSet(a, b, perOpponent); });
+    });
+
+    return {
+      standings: this.finalize(myRecs),
+      otherStandings: this.finalize(otherRecs),
+      otherLeague: otherLeague,
+    };
+  },
 
   /* ==================================================
      ⑦ 短期決戦（CS・日本シリーズ）
@@ -524,13 +550,11 @@ const Season = {
     return { first: first, final: final, winner: final.winner };
   },
 
-  /** 日本シリーズ（7戦4勝） */
-  playNipponSeries: function (champ, otherLeagueName) {
-    const rival = {
-      name: otherLeagueName,
-      isUser: false,
-      pyth: this.clamp(0.560 + this.gauss(0.035), 0.48, 0.66),   // もう一方のリーグの優勝チーム
-    };
+  /**
+   * 日本シリーズ（7戦4勝）。
+   * 相手はもう一方のリーグを実際にシミュレーションして決まった優勝チーム。
+   */
+  playNipponSeries: function (champ, rival) {
     const s = this.playSeries(champ, rival, 4, 0);
     return { rival: rival, series: s, winner: s.winner };
   },

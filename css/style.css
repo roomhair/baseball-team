@@ -612,3 +612,5 @@ a { color: var(--c-accent-2); }
 .final--gold .final__label { color: var(--c-accent); text-shadow: 0 0 24px rgba(255,210,63,.5); }
 .final__record { margin: 12px 0 0; font-size: 14px; color: var(--c-text-dim); }
 .final__record b { font-size: 20px; color: var(--c-text); }
+
+.series__sub { display: block; width: 100%; font-size: 11px; color: var(--c-text-dim); font-weight: 600; }

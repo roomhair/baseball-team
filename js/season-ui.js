@@ -330,13 +330,21 @@ const SeasonRun = {
     // --- ⑤ チームの強さを確定 ---
     const strength = Season.teamStrength(batters, pitchers, uzrTotal);
 
-    // --- ⑥ 143試合 ---
+    // --- ⑥ 143試合（自分のリーグと、もう一方のリーグを同時に動かす） ---
     const me = { name: input.teamName, isUser: true, pyth: strength.pyth,
                  rs: strength.rs, ra: strength.ra };
-    const teams = [me].concat(Season.makeRivals(league));
-    const standings = Season.playLeague(teams);
-
+    const season = Season.playSeason(me, input.leagueKey);
+    const standings = season.standings;
     const mine = standings.find(function (r) { return r.team.isUser; });
+
+    // 日本シリーズの相手になる、もう一方のリーグの優勝チームを先に決めておく
+    const otherCS = Season.playCS(season.otherStandings);
+    const otherChampion = {
+      name: otherCS.winner.name,
+      isUser: false,
+      pyth: otherCS.winner.pyth,
+      league: season.otherLeague.name,
+    };
 
     return {
       teamName: input.teamName,
@@ -345,6 +353,7 @@ const SeasonRun = {
       pitchers: pitchers,
       standings: standings,
       mine: mine,
+      otherChampion: otherChampion,
       strength: strength,
       useDH: input.team.useDH,
       cs: null,
@@ -368,6 +377,7 @@ const SeasonRun = {
                    w: r.w, l: r.l, d: r.d, pct: r.pct, rank: r.rank, gb: r.gb };
         }),
         useDH: input.team.useDH,
+        otherChampion: otherChampion,
         cs: null, ns: null,
       },
     };
@@ -399,6 +409,7 @@ const SeasonRun = {
       teamName: save.teamName, league: league,
       batters: batters, pitchers: pitchers, standings: standings,
       mine: standings.find(function (r) { return r.team.isUser; }),
+      otherChampion: save.otherChampion,
       useDH: save.useDH,
       cs: save.cs, ns: save.ns,
       save: save,

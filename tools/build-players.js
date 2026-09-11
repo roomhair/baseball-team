@@ -223,9 +223,7 @@ function build() {
 
   // --- 二刀流 ---
   const twoWayRows = readTsv(path.join(dataDir, 'twoway.tsv'));
-  const twoWayKeys = new Set(twoWayRows.map(function (r) {
-    return nameKey(r['選手名']) + '@' + r['年度'];
-  }));
+  const twoWayKeys = new Set();   // 実際に二刀流として作れた「選手名@年度」
 
   // --- 年度フォルダ ---
   const years = fs.readdirSync(dataDir)
@@ -278,11 +276,32 @@ function build() {
   let idSeq = 0;
 
   // --- 二刀流（通常データより先に作る） ---
+  // 数字がそろっていない行は作らない。
+  // 想像で埋めた数字を実在の選手に付けてしまわないため。
+  const TWOWAY_REQUIRED = [
+    '打席', '打率', '本塁打', '打点', '出塁率', '長打率',
+    '登板', '投球回', '勝', '敗', '防御率', '奪三振',
+  ];
+  const twoWayIncomplete = [];
+
   twoWayRows.forEach(function (row) {
     const name = nameKey(row['選手名']);
     const year = Number(row['年度']);
     const pos = (row['野手ポジション'] || '').trim();
-    if (!name || !year || !POSITIONS.includes(pos)) return;
+    if (!name || !year) return;
+
+    if (!POSITIONS.includes(pos)) {
+      twoWayIncomplete.push({ name: name, year: year, missing: ['野手ポジション'] });
+      return;
+    }
+
+    const missing = TWOWAY_REQUIRED.filter(function (key) {
+      return String(row[key] === undefined ? '' : row[key]).trim() === '';
+    });
+    if (missing.length > 0) {
+      twoWayIncomplete.push({ name: name, year: year, missing: missing });
+      return;
+    }
 
     const bat = batterRatings(pos, row);
     const pit = pitcherRatings(row);
@@ -307,6 +326,8 @@ function build() {
       s: bat.s,
       sp: pit.s,
     });
+
+    twoWayKeys.add(name + '@' + year);
   });
 
   // --- 通常の選手 ---
@@ -366,7 +387,8 @@ function build() {
     });
   });
 
-  return { players: players, years: years, missing: missing };
+  return { players: players, years: years, missing: missing,
+           twoWayIncomplete: twoWayIncomplete };
 }
 
 
@@ -387,8 +409,10 @@ function main() {
   const metaFile = path.join(dataDir, 'dataset.json');
   if (fs.existsSync(metaFile)) meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
 
+  // 実行した日付は入れない。
+  // 中身が同じでもファイルが毎日変わってしまい、
+  // 「data/ と合っているか」の自動チェックが毎日こけるため。
   const payload = {
-    builtAt: new Date().toISOString().slice(0, 10),
     source: meta.source || null,
     asOf: meta.asOf || null,
     years: result.years.map(Number),
@@ -417,6 +441,16 @@ function main() {
   console.log('  守備: ' + POSITIONS.map(function (p) { return p + ' ' + byPos[p]; }).join(' / '));
   console.log('  → js/players-data.js');
   console.log('  → data/players.json');
+
+  if (result.twoWayIncomplete.length > 0) {
+    console.log('');
+    console.log('※ data/twoway.tsv に、数字がそろっていない行が ' +
+      result.twoWayIncomplete.length + '行 あります。');
+    console.log('  空欄を埋めると、その選手が二刀流としてゲームに登場します:');
+    result.twoWayIncomplete.forEach(function (x) {
+      console.log('    ' + x.name + '（' + x.year + '年）… 足りない項目: ' + x.missing.join('・'));
+    });
+  }
 
   if (result.missing.size > 0) {
     console.log('');

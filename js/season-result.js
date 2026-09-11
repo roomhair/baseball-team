@@ -244,12 +244,14 @@ const SeasonResult = {
      ================================================== */
   runNS: function () {
     const r = this.result;
-    const other = r.league.key === 'central' ? 'パ・リーグ代表' : 'セ・リーグ代表';
+    // 相手は、もう一方のリーグを実際にシミュレーションして決まった優勝チーム
+    const rival = r.otherChampion;
     const me = { name: r.teamName, isUser: true, pyth: r.mine.team.pyth };
-    const ns = Season.playNipponSeries(me, other);
+    const ns = Season.playNipponSeries(me, rival);
 
     r.ns = {
-      rival: ns.rival.name,
+      rival: rival.name,
+      rivalLeague: rival.league,
       a: ns.series.a, b: ns.series.b,
       won: ns.winner.isUser === true,
     };
@@ -285,6 +287,7 @@ const SeasonResult = {
     if (r.ns) {
       html += '<li><span class="series__label">日本シリーズ</span>' +
         esc(r.teamName) + ' ' + r.ns.a + ' － ' + r.ns.b + ' ' + esc(r.ns.rival) +
+        (r.ns.rivalLeague ? '<small class="series__sub">（' + esc(r.ns.rivalLeague) + '優勝）</small>' : '') +
         '<b>' + (r.ns.won ? '日本一！' : esc(r.ns.rival) + ' が日本一') + '</b></li>';
     }
     html += '</ul>';

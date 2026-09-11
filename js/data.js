@@ -23,7 +23,6 @@ const PlayerPool = {
       source: data.source,
       asOf: data.asOf,
       years: data.years,
-      builtAt: data.builtAt,
     };
 
     this.all = data.players;
@@ -33,9 +32,14 @@ const PlayerPool = {
 
     this.all.forEach(function (p) {
       self.byId[p.id] = p;
+
       if (p.kind === 'twoway') {
-        // 二刀流は投手としても野手としても取れるので、別枠で持つ
+        // 二刀流は投手としても野手としても取れるので、
+        // 「投」と「野手としての守備位置」の両方に入れておく。
+        // 出やすさは他の選手とまったく同じ（特別扱いはしない）。
         self.twoWay.push(p);
+        self.byPos['投'].push(p);
+        if (p.pos !== '投' && self.byPos[p.pos]) self.byPos[p.pos].push(p);
       } else if (self.byPos[p.pos]) {
         self.byPos[p.pos].push(p);
       }
@@ -63,6 +67,9 @@ const PlayerPool = {
    *   ・野手枠が埋まっていたら（＝残り1枠が投手）、野手は出てこない
    * これで「最後の1人が野手で投手が0人」という詰みが起きなくなる。
    *
+   * 二刀流選手は「投」と「野手の守備位置」の両方に入っているので、
+   * どちらの枠が空いていても出てくる。出やすさの特別扱いはしていない。
+   *
    * @param {string[]} usedNames すでに獲得した選手の名前（重複を避けるため）
    * @param {Object}   need      あと何人必要か { pitcher: 数, fielder: 数 }
    */
@@ -75,14 +82,6 @@ const PlayerPool = {
       return CONFIG.NO_DUPLICATE_NAME && used.indexOf(p.name) !== -1;
     };
 
-    // --- 二刀流を出すかどうか ---
-    // 二刀流は人数が少ないので、重みではなく「出す確率」で扱う。
-    const twoWayPool = this.twoWay.filter(function (p) { return !isUsed(p); });
-    if (twoWayPool.length > 0 && Math.random() < CONFIG.TWOWAY_RATE) {
-      return twoWayPool[Math.floor(Math.random() * twoWayPool.length)];
-    }
-
-    // --- 通常の選手 ---
     const candidates = [];
     let total = 0;
 
@@ -101,14 +100,7 @@ const PlayerPool = {
       candidates.push({ key: key, weight: weight, list: pickable });
     });
 
-    if (candidates.length === 0) {
-      // 通常の選手が出せない状況（投手枠しか残っておらず投手を引き当てられない等）は
-      // 二刀流で埋める
-      if (twoWayPool.length > 0) {
-        return twoWayPool[Math.floor(Math.random() * twoWayPool.length)];
-      }
-      return null;
-    }
+    if (candidates.length === 0) return null;
 
     let r = Math.random() * total;
     let chosen = candidates[candidates.length - 1];
