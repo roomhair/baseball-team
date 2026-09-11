@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>作られたチーム｜最強チームメーカー</title>
+  <meta name="description" content="最強チームメーカーで作られたチームの結果ページ。">
+  <meta name="robots" content="noindex">
+
+  <meta property="og:title" content="最強チームメーカー">
+  <meta property="og:description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <section class="screen is-active">
+    <div class="container">
+
+      <header class="pagehead">
+        <p class="pagehead__eyebrow"><a href="index.html">最強チームメーカー</a></p>
+        <h1 class="pagehead__title">この人が作ったチーム</h1>
+      </header>
+
+      <div id="r-body"></div>
+
+      <div class="ad-slot" data-ad-slot="result"></div>
+
+      <!-- Result.render() が使うので、中身が無くても置いておく -->
+      <div id="r-actions-own" hidden></div>
+
+      <div id="r-actions-guest">
+        <div class="cta">
+          <a class="btn btn--primary btn--xl" href="index.html">自分も作ってみる</a>
+        </div>
+        <div class="cta">
+          <button type="button" class="btn btn--ghost" id="btn-guest-image">このチームを画像にする</button>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <p data-meta-source></p>
+        <p class="footer__small">
+          選手写真・球団ロゴ・球団名の商標は使用していません。<br>
+          「打撃力」「走力」「守備力」「守備適性」は本ゲーム独自の指標です。
+        </p>
+      </footer>
+
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="image-overlay">
+  <div class="overlay__panel">
+    <div class="overlay__box" id="image-box"></div>
+    <p class="overlay__hint">スマホは画像を長押しして保存できます。</p>
+    <div class="overlay__actions">
+      <a class="btn btn--primary" id="image-download" download="saikyo-team.png">画像を保存</a>
+      <button type="button" class="btn btn--ghost" id="image-close">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/players-data.js"></script>
+<script src="js/config.js"></script>
+<script src="js/positions.js"></script>
+<script src="js/data.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evaluate.js"></script>
+<script src="js/share.js"></script>
+<script src="js/result.js"></script>
+<script src="js/ads.js"></script>
+<script src="js/result-page.js"></script>
+</body>
+</html>

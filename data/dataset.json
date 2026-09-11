@@ -1,0 +1,12 @@
+{
+  "asOf": "2026年9月11日時点",
+  "source": {
+    "name": "NPB.jp（日本野球機構）",
+    "url": "https://npb.jp/bis/2026/stats/"
+  },
+  "defaultYear": null,
+  "yearRange": [
+    2005,
+    2026
+  ]
+}

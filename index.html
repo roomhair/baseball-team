@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>最強チームメーカー</title>
-  <meta name="description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！">
+  <meta name="description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！ 取るか、見送るか。9人集めること自体が難しい野球チーム編成ゲーム。">
 
-  <!-- SNSでリンクを貼ったときの見え方（STEP10で画像も設定します） -->
   <meta property="og:title" content="最強チームメーカー">
   <meta property="og:description" content="ランダムに現れる選手を取捨選択して、最強の9人を作れ！">
   <meta property="og:type" content="website">
@@ -16,81 +15,195 @@
 </head>
 <body>
 
-  <!-- ==================================================
-       アプリ全体の入れ物
-       画面（screen）を切り替えて使います。
-       is-active が付いている画面だけが表示されます。
-       ================================================== -->
-  <div id="app">
+<div id="app">
 
-    <!-- ========== ① トップ画面 ========== -->
-    <section class="screen is-active" id="screen-top">
-      <div class="container">
+  <!-- ============ ① トップ画面 ============ -->
+  <section class="screen is-active" id="screen-top">
+    <div class="container">
 
-        <!-- 広告枠（初期版は空。STEP10で有効化できます） -->
-        <div class="ad-slot" data-ad-slot="top-header"></div>
+      <div class="ad-slot" data-ad-slot="top-header"></div>
 
-        <header class="hero">
-          <p class="hero__eyebrow">BASEBALL TEAM BUILDER</p>
-          <h1 class="hero__title">
-            <span class="hero__title-main">最強チーム</span><span class="hero__title-sub">メーカー</span>
-          </h1>
-          <p class="hero__lead">
-            ランダムに現れる選手を取捨選択して、<br>最強の9人を作れ！
-          </p>
-        </header>
+      <header class="hero">
+        <p class="hero__eyebrow">BASEBALL TEAM BUILDER</p>
+        <h1 class="hero__title">
+          <span class="hero__title-main">最強チーム</span><span class="hero__title-sub">メーカー</span>
+        </h1>
+        <p class="hero__lead">
+          ランダムに現れる選手を取捨選択して、<br>最強の9人を作れ！
+        </p>
+      </header>
 
-        <div class="rules">
-          <h2 class="rules__heading">ルール</h2>
-          <ul class="rules__list">
-            <li><span class="rules__num">1</span>選手はポジション関係なく<b>完全ランダム</b>で登場</li>
-            <li><span class="rules__num">2</span>できるのは「<b>取る</b>」か「<b>見送る</b>」だけ</li>
-            <li><span class="rules__num">3</span>見送れるのは<b>5回まで</b></li>
-            <li><span class="rules__num">4</span><b>9人</b>集めたら打順と守備位置を決める</li>
-          </ul>
-          <p class="rules__note">※ 捕手が来ない。投手が5人になる。ショートがいない。それがこのゲームです。</p>
+      <div class="rules">
+        <h2 class="rules__heading">ルール</h2>
+        <ul class="rules__list">
+          <li><span class="rules__num">1</span>選手はポジション関係なく<b>完全ランダム</b>で1人ずつ登場</li>
+          <li><span class="rules__num">2</span>できるのは「<b>取る</b>」か「<b>見送る</b>」だけ</li>
+          <li><span class="rules__num">3</span>見送れるのは<b>5回まで</b>。使い切ったら取るしかない</li>
+          <li><span class="rules__num">4</span><b>9人</b>集めたら打順と守備位置を決めて完成</li>
+        </ul>
+        <p class="rules__note">※ 捕手が来ない。投手が5人になる。ショートがいない。それがこのゲームです。</p>
+      </div>
+
+      <div class="ad-slot" data-ad-slot="top-before-start"></div>
+
+      <div class="cta">
+        <button type="button" class="btn btn--primary btn--xl" id="btn-start">ゲーム開始</button>
+      </div>
+
+      <footer class="footer">
+        <p data-meta-source></p>
+        <p class="footer__small">
+          選手写真・球団ロゴ・球団名の商標は使用していません。<br>
+          「打撃力」「走力」「守備力」「守備適性」は本ゲーム独自の指標です。
+        </p>
+      </footer>
+
+    </div>
+  </section>
+
+
+  <!-- ============ ② ガチャ画面 ============ -->
+  <section class="screen" id="screen-game">
+
+    <!-- 上に固定される情報バー -->
+    <div class="gamebar">
+      <div class="gamebar__inner">
+        <div class="gamebar__team">
+          <span class="gamebar__label">現在のチーム</span>
+          <strong id="g-count">0 / 9</strong>
         </div>
+        <div class="gamebar__pass" id="g-pass-left">見送り残り：5回</div>
+      </div>
+      <div class="gamebar__progress"><i id="g-progress"></i></div>
+    </div>
 
-        <!-- 広告枠（ゲーム開始前） -->
-        <div class="ad-slot" data-ad-slot="top-before-start"></div>
+    <div class="container container--game">
+      <div class="flash" id="g-flash"></div>
+      <div id="g-card"></div>
 
+      <div class="choice">
+        <button type="button" class="btn btn--pass" id="btn-pass">
+          見送る<span class="btn__sub">残り 5 回</span>
+        </button>
+        <button type="button" class="btn btn--take" id="btn-take">
+          取る<span class="btn__sub">チームに加える</span>
+        </button>
+      </div>
+
+      <div class="roster">
+        <h2 class="roster__heading">獲得した選手</h2>
+        <div class="roster__list" id="g-roster"></div>
+      </div>
+
+      <div class="subactions">
+        <button type="button" class="btn-text" id="btn-give-up">最初からやり直す</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ ③ 編成画面 ============ -->
+  <section class="screen" id="screen-lineup">
+    <div class="container">
+      <header class="pagehead">
+        <h1 class="pagehead__title">打順・守備位置</h1>
+        <p class="pagehead__lead">
+          ▲▼で打順を入れ替え、プルダウンで守備位置を選びます。<br>
+          適性が低い場所に置くこともできます（そのぶん評価は下がります）。
+        </p>
+      </header>
+
+      <div class="warn" id="l-warn"></div>
+
+      <ol class="slots" id="l-list"></ol>
+
+      <div class="cta cta--row">
+        <button type="button" class="btn btn--ghost" id="btn-lineup-auto">おまかせ配置</button>
+        <button type="button" class="btn btn--primary" id="btn-lineup-done">完成！</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ ④ 結果画面 ============ -->
+  <section class="screen" id="screen-result">
+    <div class="container">
+      <header class="pagehead">
+        <h1 class="pagehead__title">チーム評価</h1>
+      </header>
+
+      <div id="r-body"></div>
+
+      <div class="ad-slot" data-ad-slot="result"></div>
+
+      <!-- 自分で作ったとき -->
+      <div id="r-actions-own">
         <div class="cta">
-          <button type="button" class="btn btn--primary btn--xl" id="btn-start">
-            ゲーム開始
-          </button>
+          <button type="button" class="btn btn--primary" id="btn-result-image">このチームを画像にする</button>
         </div>
-
-        <footer class="footer">
-          <p>最強チームメーカー</p>
-          <p class="footer__small">登場する選手・球団はすべて架空のものです。</p>
-        </footer>
-
+        <div class="cta cta--row">
+          <button type="button" class="btn btn--x" id="btn-result-x">Xでシェア</button>
+          <button type="button" class="btn btn--ghost" id="btn-result-copy">URLをコピー</button>
+        </div>
+        <p class="copy-msg" id="r-copy-msg" hidden></p>
+        <div class="subactions">
+          <button type="button" class="btn-text" id="btn-back-lineup">編成をやり直す</button>
+          <button type="button" class="btn-text" id="btn-result-again">もう一度あそぶ</button>
+        </div>
       </div>
-    </section>
 
-    <!-- ========== ② ガチャ画面（STEP 2・3で作ります） ========== -->
-    <section class="screen" id="screen-game">
-      <div class="container">
-        <p class="placeholder">ここにゲーム画面を作ります（STEP 2 以降）</p>
+      <!-- 他人の結果を見ているとき（result.html で使う） -->
+      <div id="r-actions-guest" hidden>
+        <div class="cta">
+          <a class="btn btn--primary" href="index.html">自分も作ってみる</a>
+        </div>
       </div>
-    </section>
 
-    <!-- ========== ③ 編成画面（STEP 5で作ります） ========== -->
-    <section class="screen" id="screen-lineup">
-      <div class="container">
-        <p class="placeholder">ここに打順・守備位置の設定画面を作ります（STEP 5）</p>
-      </div>
-    </section>
+      <footer class="footer">
+        <p data-meta-source></p>
+      </footer>
+    </div>
+  </section>
 
-    <!-- ========== ④ 結果画面（STEP 7で作ります） ========== -->
-    <section class="screen" id="screen-result">
-      <div class="container">
-        <p class="placeholder">ここにチーム評価の結果画面を作ります（STEP 7）</p>
-      </div>
-    </section>
+</div>
 
+
+<!-- 9人そろったときの演出 -->
+<div class="complete" id="complete-overlay">
+  <div class="complete__inner">
+    <p class="complete__big">9人集まりました！</p>
+    <p class="complete__sub"></p>
   </div>
+</div>
 
-  <script src="js/main.js"></script>
+<!-- 結果画像の表示 -->
+<div class="overlay" id="image-overlay">
+  <div class="overlay__panel">
+    <div class="overlay__box" id="image-box"></div>
+    <p class="overlay__hint">スマホは画像を長押しして保存できます。</p>
+    <div class="overlay__actions">
+      <a class="btn btn--primary" id="image-download" download="saikyo-team.png">画像を保存</a>
+      <button type="button" class="btn btn--ghost" id="image-close">閉じる</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- 選手データ（自動生成。tools/build-players.js が作る） -->
+<script src="js/players-data.js"></script>
+
+<!-- ゲーム本体 -->
+<script src="js/config.js"></script>
+<script src="js/positions.js"></script>
+<script src="js/data.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evaluate.js"></script>
+<script src="js/game.js"></script>
+<script src="js/lineup.js"></script>
+<script src="js/share.js"></script>
+<script src="js/result.js"></script>
+<script src="js/ads.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

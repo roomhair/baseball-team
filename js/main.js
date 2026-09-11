@@ -1,19 +1,9 @@
 /* ==================================================
    最強チームメーカー  main.js
-   役割：画面の切り替えと、アプリ全体の起動処理。
-   （ゲームのルールは STEP 3 以降で別ファイルに書きます）
+   画面の切り替えと、アプリ全体の起動処理。
    ================================================== */
-
-/* 'use strict' は「書き間違いを厳しくチェックしてね」という宣言です。
-   初心者のうちはバグに早く気づけるので必ず書いておきます。 */
 'use strict';
 
-
-/* --------------------------------------------------
-   画面の名前の一覧
-   ここに書いた名前と、index.html の id="screen-〇〇" が
-   対応しています。
--------------------------------------------------- */
 const SCREENS = {
   TOP:    'screen-top',
   GAME:   'screen-game',
@@ -21,49 +11,137 @@ const SCREENS = {
   RESULT: 'screen-result',
 };
 
-
-/* --------------------------------------------------
-   画面を切り替える関数
-   使い方： showScreen(SCREENS.GAME)
--------------------------------------------------- */
+/** 画面を切り替える */
 function showScreen(screenId) {
-  // いったん全部の画面を隠す
-  const all = document.querySelectorAll('.screen');
-  all.forEach(function (el) {
+  document.querySelectorAll('.screen').forEach(function (el) {
     el.classList.remove('is-active');
   });
-
-  // 指定された画面だけ表示する
   const target = document.getElementById(screenId);
   if (!target) {
     console.error('画面が見つかりません:', screenId);
     return;
   }
   target.classList.add('is-active');
-
-  // 画面の一番上までスクロールを戻す
   window.scrollTo(0, 0);
 }
 
 
-/* --------------------------------------------------
-   アプリの起動処理
-   DOMContentLoaded = 「HTMLの読み込みが終わった」合図。
-   これを待たないと、ボタンを探しても見つからないことがあります。
--------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', function () {
 
-  // 「ゲーム開始」ボタン
-  const btnStart = document.getElementById('btn-start');
+  // --- 1. 選手データを読み込む ---
+  try {
+    PlayerPool.init();
+  } catch (e) {
+    document.getElementById('app').innerHTML =
+      '<div class="container"><p class="placeholder">' +
+      '選手データが読み込めませんでした。<br>js/players-data.js があるか確認してください。' +
+      '</p></div>';
+    console.error(e);
+    return;
+  }
 
-  btnStart.addEventListener('click', function () {
-    // STEP 3 でここに「ゲームを始める処理」を書きます。
-    // 今は画面を切り替えるだけです。
-    showScreen(SCREENS.GAME);
+  // --- 2. 各画面の準備 ---
+  Game.init();
+  Lineup.init();
+  Ads.init();
+  renderMeta();
+
+  // --- 3. ボタンの配線 ---
+  document.getElementById('btn-start').addEventListener('click', function () {
+    startNewGame();
   });
 
-  // 最初はトップ画面を表示
-  showScreen(SCREENS.TOP);
+  document.getElementById('btn-give-up').addEventListener('click', function () {
+    if (confirm('最初からやり直しますか？　いま集めた選手は消えます。')) {
+      Storage.clear();
+      showScreen(SCREENS.TOP);
+    }
+  });
 
-  console.log('最強チームメーカー: 起動しました（STEP 1）');
+  document.getElementById('btn-result-image').addEventListener('click', function () {
+    Result.makeImage();
+  });
+  document.getElementById('btn-result-x').addEventListener('click', function () {
+    Result.shareX();
+  });
+  document.getElementById('btn-result-copy').addEventListener('click', function () {
+    Result.copyUrl();
+  });
+  document.getElementById('btn-result-again').addEventListener('click', function () {
+    startNewGame();
+  });
+  document.getElementById('btn-back-lineup').addEventListener('click', function () {
+    showScreen(SCREENS.LINEUP);
+  });
+
+  document.getElementById('image-close').addEventListener('click', function () {
+    document.getElementById('image-overlay').classList.remove('is-on');
+  });
+
+  // --- 4. 前回の続きがあれば復帰する ---
+  const saved = Storage.load();
+  if (saved && Array.isArray(saved.picked)) {
+    resume(saved);
+  } else {
+    showScreen(SCREENS.TOP);
+  }
 });
+
+
+/** 新しくゲームを始める */
+function startNewGame() {
+  Storage.clear();
+  Game.start();
+  showScreen(SCREENS.GAME);
+}
+
+
+/** 保存データから続きを再開する */
+function resume(saved) {
+  try {
+    if (saved.phase === 'result' && saved.lineup) {
+      Lineup.resume(saved.lineup);
+      if (Result.showFromSlots(saved.lineup)) {
+        Game.state = saved;
+        showScreen(SCREENS.RESULT);
+        return;
+      }
+    }
+    if (saved.phase === 'lineup' && saved.lineup) {
+      Game.state = saved;
+      Lineup.resume(saved.lineup);
+      showScreen(SCREENS.LINEUP);
+      return;
+    }
+    if (saved.phase === 'lineup') {
+      Game.state = saved;
+      Lineup.start(Game.pickedPlayers());
+      showScreen(SCREENS.LINEUP);
+      return;
+    }
+    // 途中まで集めていた場合
+    Game.resume(saved);
+    showScreen(SCREENS.GAME);
+  } catch (e) {
+    console.warn('続きから再開できませんでした:', e);
+    Storage.clear();
+    showScreen(SCREENS.TOP);
+  }
+}
+
+
+/** データの出典をフッターに出す */
+function renderMeta() {
+  const meta = PlayerPool.meta;
+  const els = document.querySelectorAll('[data-meta-source]');
+  if (!meta.source) return;
+
+  const years = meta.years || [];
+  const range = years.length ? years[0] + '〜' + years[years.length - 1] + '年' : '';
+
+  els.forEach(function (el) {
+    el.innerHTML =
+      '成績データ出典：<a href="' + meta.source.url + '" target="_blank" rel="noopener">' +
+      esc(meta.source.name) + '</a>（' + range + '／' + PlayerPool.all.length + '人）';
+  });
+}
