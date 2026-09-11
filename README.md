@@ -1,11 +1,15 @@
 # 最強チームメーカー
 
-> **公開版はこちら** → https://baseball-statsquiz.keeeskkeeesk.workers.dev/team/
+> ## ⚠ このリポジトリはもう使っていません
 >
-> このリポジトリは開発用。公開しているものは
-> [roomhair/baseball-statsquiz](https://github.com/roomhair/baseball-statsquiz) の
-> `team/` に入っていて、成績データ（`data/<年度>/*.tsv`）はクイズと共用している。
-> 直したらそちらにも反映すること。
+> **本体はこちら** → https://baseball-statsquiz.keeeskkeeesk.workers.dev/team/
+> **コードはこちら** → [roomhair/baseball-statsquiz](https://github.com/roomhair/baseball-statsquiz) の `team/`
+>
+> 2026年の現役選手だけを扱う作りに変わり、選手データの取得
+> （支配下選手名簿・二軍成績・個人守備成績）が `baseball-statsquiz` 側の
+> `tools/` と GitHub Actions に移りました。
+> **直すときは `baseball-statsquiz` のほうを直してください。**
+> このリポジトリの中身は、その前の版です。
 
 ランダムに現れるプロ野球選手を「取る」か「見送る」かだけで、最強の9人を作るブラウザゲーム。
 
